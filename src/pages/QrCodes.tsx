@@ -78,8 +78,15 @@ export default function QrCodes() {
 
   async function handleCreate() {
     setCreating(true);
-    const { count } = await supabase.from('qr_codes').select('*', { count: 'exact', head: true });
-    const startNum = (count ?? 0) + 1;
+    // Usa o maior número já usado (não a contagem de linhas), senão excluir
+    // um QR no meio da sequência faz o próximo lote colidir com um código existente.
+    const { data: last } = await supabase
+      .from('qr_codes')
+      .select('codigo')
+      .order('codigo', { ascending: false })
+      .limit(1);
+    const lastNum = last?.[0]?.codigo ? parseInt(last[0].codigo.replace(/\D/g, ''), 10) : 0;
+    const startNum = (Number.isFinite(lastNum) ? lastNum : 0) + 1;
     const rows = [];
     for (let i = 0; i < batchCount; i++) {
       const num = startNum + i;
