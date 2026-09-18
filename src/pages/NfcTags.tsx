@@ -82,7 +82,7 @@ export default function NfcTags() {
     const { data: last } = await supabase
       .from('nfc_tags')
       .select('codigo')
-      .order('codigo', { ascending: false })
+      .order('codigo', { ascending: true })
       .limit(1);
     const lastNum = last?.[0]?.codigo ? parseInt(last[0].codigo.replace(/\D/g, ''), 10) : 0;
     const startNum = (Number.isFinite(lastNum) ? lastNum : 0) + 1;
