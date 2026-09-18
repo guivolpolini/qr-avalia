@@ -35,7 +35,7 @@ export default function QrCodes() {
     const { data, error } = await supabase
       .from('qr_codes')
       .select('*, estabelecimento:estabelecimento_id(nome, link_google)')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }) .order('codigo', { ascending: false });
 
     if (error) {
       console.error('Erro ao carregar QR codes:', error.message);
