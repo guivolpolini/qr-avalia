@@ -46,7 +46,7 @@ export default function NfcTags() {
     const { data, error } = await supabase
       .from('nfc_tags')
       .select('*, estabelecimento:estabelecimento_id(nome)')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }) .order('codigo', { ascending: false });
 
     if (error) {
       console.error('Erro ao carregar NFC tags:', error.message);
