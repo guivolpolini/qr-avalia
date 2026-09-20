@@ -1,9 +1,40 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Plus, Pencil, Trash2, Store, X, Search, Phone, MapPin, ExternalLink, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Store, X, Search, Phone, MapPin, ExternalLink, Loader2, Sparkles, Copy, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
 
-const emptyForm = { nome: '', link_google: '', telefone: '', endereco: '', ativo: true };
+const emptyForm = {
+  nome: '', link_google: '', telefone: '', endereco: '', ativo: true,
+  tipo_negocio: '', descricao: '', cardapio: '', cor_marca: '', whatsapp: '', instagram: '', site_com_admin: false,
+};
+
+function gerarPromptSite(e: Estabelecimento): string {
+  const l: string[] = [];
+  const paginas = ['Início', 'Sobre', e.cardapio ? 'Cardápio/Produtos' : null, 'Contato'].filter(Boolean).join(', ');
+  l.push(`Site para "${e.nome}"${e.tipo_negocio ? ` (${e.tipo_negocio})` : ''}. Páginas: ${paginas}.`);
+  if (e.descricao) l.push(e.descricao);
+  if (e.cardapio) l.push(`Cardápio:\n${e.cardapio}`);
+
+  const digitos = (e.whatsapp || '').replace(/\D/g, '');
+  const zap = digitos && (digitos.startsWith('55') && digitos.length >= 12 ? digitos : '55' + digitos);
+
+  const contato: string[] = [];
+  if (e.endereco) contato.push(`Endereço: ${e.endereco}`);
+  if (e.telefone) contato.push(`Tel: ${e.telefone}`);
+  if (zap) contato.push(`WhatsApp: https://wa.me/${zap}`);
+  if (e.instagram) contato.push(`Instagram: ${e.instagram}`);
+  if (e.link_google) contato.push(`Botão "Avaliar no Google" → ${e.link_google}`);
+  if (contato.length) l.push(`Contato:\n${contato.join('\n')}`);
+
+  l.push(e.cor_marca ? `Cor principal: ${e.cor_marca}.` : 'Cores neutras combinando com o tipo de negócio.');
+  l.push('Design moderno, responsivo, mobile-first. Use só os dados fornecidos; não invente informações.');
+
+  if (e.site_com_admin) {
+    l.push('Incluir painel admin com login (rota /admin) para editar cardápio, textos e contato sem mexer no código.');
+  }
+
+  return l.join('\n');
+}
 
 export default function Estabelecimentos() {
   const [items, setItems] = useState<Estabelecimento[]>([]);
@@ -14,6 +45,8 @@ export default function Estabelecimentos() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [promptFor, setPromptFor] = useState<Estabelecimento | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     load();
@@ -42,7 +75,12 @@ export default function Estabelecimentos() {
 
   function openEdit(e: Estabelecimento) {
     setEditing(e);
-    setForm({ nome: e.nome, link_google: e.link_google, telefone: e.telefone, endereco: e.endereco, ativo: e.ativo });
+    setForm({
+      nome: e.nome, link_google: e.link_google, telefone: e.telefone, endereco: e.endereco, ativo: e.ativo,
+      tipo_negocio: e.tipo_negocio ?? '', descricao: e.descricao ?? '', cardapio: e.cardapio ?? '',
+      cor_marca: e.cor_marca ?? '', whatsapp: e.whatsapp ?? '', instagram: e.instagram ?? '',
+      site_com_admin: e.site_com_admin ?? false,
+    });
     setError(null);
     setShowModal(true);
   }
@@ -75,6 +113,22 @@ export default function Estabelecimentos() {
   async function toggleAtivo(e: Estabelecimento) {
     await supabase.from('estabelecimentos').update({ ativo: !e.ativo }).eq('id', e.id);
     load();
+  }
+
+  function openPrompt(e: Estabelecimento) {
+    setPromptFor(e);
+    setCopied(false);
+  }
+
+  async function copyPrompt() {
+    if (!promptFor) return;
+    try {
+      await navigator.clipboard.writeText(gerarPromptSite(promptFor));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.alert('Não foi possível copiar. Selecione o texto e copie manualmente.');
+    }
   }
 
   const filtered = items.filter((e) =>
@@ -156,6 +210,9 @@ export default function Estabelecimentos() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => openPrompt(e)} title="Gerar prompt do site" className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+                          <Sparkles size={16} />
+                        </button>
                         <button onClick={() => openEdit(e)} className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
                           <Pencil size={16} />
                         </button>
@@ -188,6 +245,7 @@ export default function Estabelecimentos() {
                 {e.telefone && <p className="text-sm text-slate-500 flex items-center gap-1.5 mb-1"><Phone size={13} /> {e.telefone}</p>}
                 {e.endereco && <p className="text-sm text-slate-500 flex items-center gap-1.5"><MapPin size={13} /> {e.endereco}</p>}
                 <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <button onClick={() => openPrompt(e)} className="btn-secondary flex-1 text-xs"><Sparkles size={14} /> Prompt do site</button>
                   <button onClick={() => openEdit(e)} className="btn-secondary flex-1 text-xs"><Pencil size={14} /> Editar</button>
                   <button onClick={() => handleDelete(e.id)} className="btn-secondary text-red-500 text-xs"><Trash2 size={14} /></button>
                 </div>
@@ -234,6 +292,46 @@ export default function Estabelecimentos() {
                 <span className="text-sm font-medium text-slate-700">Estabelecimento ativo</span>
               </label>
 
+              <details className="pt-1">
+                <summary className="text-sm font-semibold text-slate-700 cursor-pointer flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-brand-500" /> Dados para gerar prompt de site (opcional)
+                </summary>
+                <div className="space-y-4 mt-3">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Tipo de negócio</label>
+                      <input value={form.tipo_negocio} onChange={(e) => setForm({ ...form, tipo_negocio: e.target.value })} className="input" placeholder="Ex: pizzaria, ótica, salão" />
+                    </div>
+                    <div>
+                      <label className="label">Cor da marca</label>
+                      <input value={form.cor_marca} onChange={(e) => setForm({ ...form, cor_marca: e.target.value })} className="input" placeholder="Ex: vermelho e branco" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="label">Descrição do negócio</label>
+                    <textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} className="input min-h-20" placeholder="Poucas frases sobre o que o negócio faz e o diferencial dele" />
+                  </div>
+                  <div>
+                    <label className="label">Cardápio / produtos</label>
+                    <textarea value={form.cardapio} onChange={(e) => setForm({ ...form, cardapio: e.target.value })} className="input min-h-20" placeholder={'Um item por linha, ex:\nPizza Margherita - R$ 45\nPizza Calabresa - R$ 48'} />
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">WhatsApp</label>
+                      <input value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} className="input" placeholder="(11) 99999-9999" />
+                    </div>
+                    <div>
+                      <label className="label">Instagram</label>
+                      <input value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} className="input" placeholder="@seunegocio" />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" checked={form.site_com_admin} onChange={(e) => setForm({ ...form, site_com_admin: e.target.checked })} className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200" />
+                    <span className="text-sm font-medium text-slate-700">Este site vai ter painel de administrador</span>
+                  </label>
+                </div>
+              </details>
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancelar</button>
                 <button type="submit" disabled={saving} className="btn-primary flex-1">
@@ -241,6 +339,35 @@ export default function Estabelecimentos() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Prompt do site */}
+      {promptFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in" onClick={() => setPromptFor(null)}>
+          <div className="card w-full max-w-xl p-6 animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Sparkles size={18} className="text-brand-500" /> Prompt do site — {promptFor.nome}
+              </h2>
+              <button onClick={() => setPromptFor(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-3">
+              Copie e cole no Lovable, Base44 ou ferramenta parecida para gerar o site.
+            </p>
+            <textarea
+              readOnly
+              value={gerarPromptSite(promptFor)}
+              className="input min-h-64 font-mono text-xs leading-relaxed"
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+            <button onClick={copyPrompt} className="btn-primary w-full mt-4">
+              {copied ? <Check size={18} /> : <Copy size={18} />}
+              {copied ? 'Copiado!' : 'Copiar prompt'}
+            </button>
           </div>
         </div>
       )}

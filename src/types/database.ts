@@ -5,6 +5,13 @@ export interface Estabelecimento {
   telefone: string;
   endereco: string;
   ativo: boolean;
+  tipo_negocio: string;
+  descricao: string;
+  cardapio: string;
+  cor_marca: string;
+  whatsapp: string;
+  instagram: string;
+  site_com_admin: boolean;
   created_at: string;
   updated_at: string;
 }
