@@ -1,12 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Store, QrCode, Nfc, ScanLine, Settings, LogOut, QrCode as QrIcon } from 'lucide-react';
+import { LayoutDashboard, Store, QrCode, ScanLine, Settings, LogOut, QrCode as QrIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/estabelecimentos', label: 'Estabelecimentos', icon: Store },
-  { to: '/qr-codes', label: 'QR Codes', icon: QrCode },
-  { to: '/nfc-tags', label: 'Tags NFC', icon: Nfc },
+  { to: '/placas', label: 'Placas', icon: QrCode },
   { to: '/scans', label: 'Scans', icon: ScanLine },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
