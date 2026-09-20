@@ -5,11 +5,10 @@ import Layout from '@/components/Layout';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Estabelecimentos from '@/pages/Estabelecimentos';
-import QrCodes from '@/pages/QrCodes';
+import Placas from '@/pages/Placas';
 import Scans from '@/pages/Scans';
 import Configuracoes from '@/pages/Configuracoes';
 import QrRedirect from '@/pages/QrRedirect';
-import NfcTags from '@/pages/NfcTags';
 import NfcRedirect from '@/pages/NfcRedirect';
 
 function App() {
@@ -46,25 +45,18 @@ function App() {
             }
           />
           <Route
-            path="/qr-codes"
+            path="/placas"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <QrCodes />
+                  <Placas />
                 </Layout>
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/nfc-tags"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <NfcTags />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+          {/* Links antigos continuam funcionando, redirecionando pra página unificada */}
+          <Route path="/qr-codes" element={<Navigate to="/placas" replace />} />
+          <Route path="/nfc-tags" element={<Navigate to="/placas" replace />} />
           <Route
             path="/scans"
             element={
