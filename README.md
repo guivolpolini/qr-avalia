@@ -16,16 +16,3 @@ Sistema de gerenciamento de QR Codes e Tags NFC dinâmicas para avaliações de 
 - Supabase (Postgres + Auth + Row Level Security)
 - React Router
 
-## Rodando localmente
-
-```bash
-npm install
-cp .env.example .env   # preencha com suas credenciais do Supabase
-npm run dev
-```
-
-## Estrutura
-
-- `src/pages` — telas do painel (Dashboard, Estabelecimentos, QR Codes, NFC, Scans, Configurações)
-- `src/context` — autenticação
-- `supabase/migrations` — schema do banco e políticas de RLS
