@@ -37,6 +37,19 @@ export interface NfcTag {
   estabelecimento?: Pick<Estabelecimento, 'id' | 'nome'> | null;
 }
 
+export interface GoogleSeoStatus {
+  id: string;
+  estabelecimento_id: string;
+  url_google_business: string;
+  url_google_maps: string;
+  url_avaliacoes: string;
+  checklist: Record<string, boolean>;
+  observacoes: string;
+  created_at: string;
+  updated_at: string;
+  estabelecimento?: Pick<Estabelecimento, 'id' | 'nome'> | null;
+}
+
 export interface Scan {
   id: string;
   tipo: string;

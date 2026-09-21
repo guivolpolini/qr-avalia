@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Store, QrCode, ScanLine, Settings, LogOut, QrCode as QrIcon } from 'lucide-react';
+import { LayoutDashboard, Store, QrCode, ScanLine, Settings, LogOut, Search, QrCode as QrIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { to: '/estabelecimentos', label: 'Estabelecimentos', icon: Store },
   { to: '/placas', label: 'Placas', icon: QrCode },
   { to: '/scans', label: 'Scans', icon: ScanLine },
+  { to: '/google-seo', label: 'Google / SEO', icon: Search },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
