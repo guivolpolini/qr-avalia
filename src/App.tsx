@@ -7,6 +7,7 @@ import Dashboard from '@/pages/Dashboard';
 import Estabelecimentos from '@/pages/Estabelecimentos';
 import Placas from '@/pages/Placas';
 import Scans from '@/pages/Scans';
+import GoogleSeo from '@/pages/GoogleSeo';
 import Configuracoes from '@/pages/Configuracoes';
 import QrRedirect from '@/pages/QrRedirect';
 import NfcRedirect from '@/pages/NfcRedirect';
@@ -63,6 +64,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Scans />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/google-seo"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <GoogleSeo />
                 </Layout>
               </ProtectedRoute>
             }
