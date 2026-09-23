@@ -25,6 +25,9 @@ export default async function handler(request) {
   const userAgent = request.headers.get('user-agent') || '';
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '';
 
+  // Detecta bots/crawlers de pré-visualização de links para não registrar acessos falsos
+  const isBot = /bot|crawl|spider|facebookexternalhit|whatsapp|telegram|twitterbot|slack|discord|linkedin|preview/i.test(userAgent);
+
   try {
     const res = await fetch(`${supabaseUrl}/rest/v1/rpc/${rpcName}`, {
       method: 'POST',
@@ -37,6 +40,7 @@ export default async function handler(request) {
         p_codigo: codigo,
         p_user_agent: userAgent,
         p_ip: ip,
+        p_skip_scan: isBot,
       }),
     });
 

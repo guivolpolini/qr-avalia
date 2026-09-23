@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ScanLine, Search, Loader2, Calendar, Globe, QrCode, Nfc } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -27,15 +27,7 @@ export default function Scans() {
   const [total, setTotal] = useState(0);
   const perPage = 25;
 
-  useEffect(() => {
-    setPage(0);
-  }, [tipoFilter]);
-
-  useEffect(() => {
-    load();
-  }, [page, tipoFilter]);
-
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     const from = page * perPage;
     const to = from + perPage - 1;
@@ -58,7 +50,15 @@ export default function Scans() {
     setItems((data ?? []) as unknown as ScanRow[]);
     setTotal(count ?? 0);
     setLoading(false);
-  }
+  }, [page, tipoFilter]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [tipoFilter]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const filtered = items.filter((s) => {
     const q = search.toLowerCase();

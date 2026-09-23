@@ -2,10 +2,11 @@ import { useEffect, useState, useCallback } from 'react';
 import QRCode from 'qrcode';
 import {
   Plus, QrCode as QrIcon, Nfc as NfcIcon, Download, Link2, Unlink, X,
-  Loader2, Search, Eye, Copy, Check, Trash2,
+  Loader2, Search, Eye, Copy, Check, Trash2, Printer,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
+import PrintModal from '@/components/PrintModal';
 
 type Tipo = 'qr' | 'nfc';
 type CreateTipo = 'qr' | 'nfc' | 'ambos';
@@ -39,6 +40,8 @@ export default function Placas() {
   const [showPreview, setShowPreview] = useState<PlacaItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [qrDataUrls, setQrDataUrls] = useState<Record<string, string>>({});
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printPlacaId, setPrintPlacaId] = useState<string | undefined>(undefined);
 
   const baseUrl = window.location.origin;
 
@@ -70,29 +73,35 @@ export default function Placas() {
   const generateQrUrl = useCallback((codigo: string) => `${baseUrl}/q/${codigo}`, [baseUrl]);
   const generateNfcUrl = useCallback((codigo: string) => `${baseUrl}/n/${codigo}`, [baseUrl]);
 
-  // Gera as imagens de QR só quando a aba QR Codes está visível
+  // Gera as imagens de QR em alta resolução para visualização e impressão
   useEffect(() => {
-    if (view !== 'qr' || qrItems.length === 0) return;
+    const todosItens = [...qrItems, ...nfcItems];
+    if (todosItens.length === 0) return;
     const urls: Record<string, string> = {};
     Promise.all(
-      qrItems.map(async (qr) => {
+      todosItens.map(async (item) => {
         try {
-          urls[qr.id] = await QRCode.toDataURL(generateQrUrl(qr.codigo), {
+          const targetUrl = item.codigo.startsWith('NFC') ? generateNfcUrl(item.codigo) : generateQrUrl(item.codigo);
+          urls[item.id] = await QRCode.toDataURL(targetUrl, {
             width: 512,
             margin: 2,
             color: { dark: '#0f172a', light: '#ffffff' },
           });
         } catch (err) {
-          console.error('Erro ao gerar QR code', qr.codigo, err);
+          console.error('Erro ao gerar QR code', item.codigo, err);
         }
       })
-    ).then(() => setQrDataUrls(urls));
-  }, [qrItems, view, generateQrUrl]);
+    ).then(() => setQrDataUrls((prev) => ({ ...prev, ...urls })));
+  }, [qrItems, nfcItems, generateQrUrl, generateNfcUrl]);
 
-  async function proximoNumero(table: 'qr_codes' | 'nfc_tags') {
-    const { data: last } = await supabase.from(table).select('codigo').order('codigo', { ascending: false }).limit(1);
-    const lastNum = last?.[0]?.codigo ? parseInt(last[0].codigo.replace(/\D/g, ''), 10) : 0;
-    return (Number.isFinite(lastNum) ? lastNum : 0) + 1;
+  async function proximoNumeroNumerico(table: 'qr_codes' | 'nfc_tags') {
+    const { data } = await supabase.from(table).select('codigo');
+    if (!data || data.length === 0) return 1;
+    const max = data.reduce((acc, curr) => {
+      const num = parseInt((curr.codigo || '').replace(/\D/g, ''), 10);
+      return Number.isFinite(num) && num > acc ? num : acc;
+    }, 0);
+    return max + 1;
   }
 
   async function handleCreate() {
@@ -100,9 +109,29 @@ export default function Placas() {
     try {
       const estId = createEst || null;
 
+      // 1. Tenta gerar via RPC atômica no banco de dados
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('gerar_placas_lote', {
+        p_tipo: createTipo,
+        p_quantidade: batchCount,
+        p_estabelecimento_id: estId,
+        p_base_url: baseUrl,
+      });
+
+      // Se a RPC funcionou, finaliza com sucesso
+      if (!rpcError && rpcResult?.sucesso) {
+        setShowCreate(false);
+        setCreateEst('');
+        setBatchCount(1);
+        await load();
+        return;
+      }
+
+      // 2. Fallback caso a RPC ainda não esteja instalada no Supabase remoto
       if (createTipo === 'ambos') {
-        // Mesmo número de sequência pros dois, pra ficarem pareados (QR007 + NFC007 = mesma placa física)
-        const [nextQr, nextNfc] = await Promise.all([proximoNumero('qr_codes'), proximoNumero('nfc_tags')]);
+        const [nextQr, nextNfc] = await Promise.all([
+          proximoNumeroNumerico('qr_codes'),
+          proximoNumeroNumerico('nfc_tags'),
+        ]);
         const start = Math.max(nextQr, nextNfc);
         const qrRows = [];
         const nfcRows = [];
@@ -118,7 +147,7 @@ export default function Placas() {
         if (r1.error) throw r1.error;
         if (r2.error) throw r2.error;
       } else if (createTipo === 'qr') {
-        const start = await proximoNumero('qr_codes');
+        const start = await proximoNumeroNumerico('qr_codes');
         const rows = Array.from({ length: batchCount }, (_, i) => ({
           codigo: `QR${String(start + i).padStart(3, '0')}`,
           ativo: true,
@@ -127,7 +156,7 @@ export default function Placas() {
         const { error } = await supabase.from('qr_codes').insert(rows);
         if (error) throw error;
       } else {
-        const start = await proximoNumero('nfc_tags');
+        const start = await proximoNumeroNumerico('nfc_tags');
         const rows = Array.from({ length: batchCount }, (_, i) => {
           const codigo = `NFC${String(start + i).padStart(3, '0')}`;
           return { codigo, url_dinamica: `${baseUrl}/n/${codigo}`, ativo: true, estabelecimento_id: estId };
@@ -139,7 +168,7 @@ export default function Placas() {
       setShowCreate(false);
       setCreateEst('');
       setBatchCount(1);
-      load();
+      await load();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erro ao gerar placas');
     } finally {
@@ -208,15 +237,29 @@ export default function Placas() {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Placas</h1>
           <p className="text-sm text-slate-500 mt-1">QR Codes e Tags NFC, no mesmo lugar</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary">
-          <Plus size={18} />
-          Gerar placas
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setPrintPlacaId(undefined);
+              setShowPrintModal(true);
+            }}
+            className="btn-secondary"
+            disabled={filtered.length === 0}
+            title="Imprimir gabarito ou salvar em PDF"
+          >
+            <Printer size={18} />
+            Imprimir / PDF
+          </button>
+          <button onClick={() => setShowCreate(true)} className="btn-primary">
+            <Plus size={18} />
+            Gerar placas
+          </button>
+        </div>
       </div>
 
       {/* Toggle QR Codes / Tags NFC */}
@@ -315,6 +358,17 @@ export default function Placas() {
                 <button onClick={() => openAssoc(item)} className="btn-secondary text-xs py-2">
                   <Link2 size={14} />
                   Associar
+                </button>
+                <button
+                  onClick={() => {
+                    setPrintPlacaId(item.id);
+                    setShowPrintModal(true);
+                  }}
+                  className="btn-secondary text-xs py-2"
+                  title="Gabarito de impressão e PDF"
+                >
+                  <Printer size={14} />
+                  Gabarito
                 </button>
                 {view === 'qr' ? (
                   <button onClick={() => downloadPng(item)} className="btn-secondary text-xs py-2" disabled={!qrDataUrls[item.id]}>
@@ -476,6 +530,23 @@ export default function Placas() {
             )}
           </div>
         </Modal>
+      )}
+
+      {/* Modal de Impressão e PDF */}
+      {showPrintModal && (
+        <PrintModal
+          placas={items.map((p) => ({
+            id: p.id,
+            codigo: p.codigo,
+            estabelecimentoNome: p.estabelecimento?.nome,
+            qrDataUrl: qrDataUrls[p.id],
+          }))}
+          initialPlacaId={printPlacaId}
+          onClose={() => {
+            setShowPrintModal(false);
+            setPrintPlacaId(undefined);
+          }}
+        />
       )}
     </div>
   );
