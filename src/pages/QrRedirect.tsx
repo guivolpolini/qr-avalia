@@ -15,6 +15,12 @@ export default function QrRedirect() {
       return;
     }
 
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('direct') === 'false') {
+      setState('not_found');
+      return;
+    }
+
     (async () => {
       const userAgent = navigator.userAgent;
       const { data: link, error } = await supabase.rpc('resolve_qr_code', {
@@ -29,10 +35,7 @@ export default function QrRedirect() {
       }
 
       setState('redirecting');
-      // Small delay so the user sees the redirect message
-      setTimeout(() => {
-        window.location.href = link;
-      }, 1200);
+      window.location.replace(link);
     })();
   }, [codigo]);
 

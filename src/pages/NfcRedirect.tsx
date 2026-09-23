@@ -15,6 +15,12 @@ export default function NfcRedirect() {
       return;
     }
 
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('direct') === 'false') {
+      setState('not_found');
+      return;
+    }
+
     (async () => {
       const userAgent = navigator.userAgent;
       const { data: link, error } = await supabase.rpc('resolve_nfc_tag', {
@@ -29,9 +35,7 @@ export default function NfcRedirect() {
       }
 
       setState('redirecting');
-      setTimeout(() => {
-        window.location.href = link;
-      }, 1200);
+      window.location.replace(link);
     })();
   }, [codigo]);
 

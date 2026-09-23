@@ -1,6 +1,36 @@
 {
   "rewrites": [
     {
+      "source": "/q/:codigo",
+      "has": [
+        {
+          "type": "query",
+          "key": "direct",
+          "value": "false"
+        }
+      ],
+      "destination": "/index.html"
+    },
+    {
+      "source": "/n/:codigo",
+      "has": [
+        {
+          "type": "query",
+          "key": "direct",
+          "value": "false"
+        }
+      ],
+      "destination": "/index.html"
+    },
+    {
+      "source": "/q/:codigo",
+      "destination": "/api/redirect?tipo=qr&codigo=:codigo"
+    },
+    {
+      "source": "/n/:codigo",
+      "destination": "/api/redirect?tipo=nfc&codigo=:codigo"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
