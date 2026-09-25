@@ -40,7 +40,7 @@ function formatRating(rating: number | null, reviewCount: number): string {
 
 /**
  * Abordagem 1: Estabelecimento SEM SITE
- * Foco: oportunidade de presença digital, não problema.
+ * Foco: Google Meu Negócio + aparecer nas pesquisas + presença digital com site
  */
 function messageSemSite(p: Prospect): string {
   const nome = firstName(p.business_name);
@@ -49,11 +49,11 @@ function messageSemSite(p: Prospect): string {
   const cityLine = city ? ` em ${city}` : '';
 
   const variants = [
-    `Olá! Vi o ${p.business_name}${cityLine} no Google Maps${ratingLine ? ' e ' + ratingLine : ''}. Trabalho com criação de sites e percebi que vocês ainda não têm um. Seria ótimo para atrair mais clientes online! Posso te mostrar alguns exemplos? 😊`,
+    `Olá! Vi o ${p.business_name}${cityLine} no Google Maps${ratingLine ? ' e ' + ratingLine : ''}. Eu trabalho otimizando o perfil do Google Meu Negócio para ajudar empresas a aparecerem no topo das pesquisas do Google e também criando sites profissionais (vi que vocês ainda não têm um). Isso ajuda muito a atrair novos clientes na região! Posso te mostrar como funciona na prática? 😊`,
 
-    `Oi, tudo bem? Achei o ${p.business_name} enquanto pesquisava${p.category ? ` ${p.category.toLowerCase()}` : ' negócios'}${cityLine}. ${ratingLine ? `Parabéns — ${ratingLine}! ` : ''}Vi que ainda não têm site próprio. Ajudo negócios locais a terem presença digital. Posso mostrar como funciona sem compromisso?`,
+    `Oi, tudo bem? Achei o ${p.business_name} pesquisando${p.category ? ` ${p.category.toLowerCase()}` : ' negócios'}${cityLine}. ${ratingLine ? `Parabéns — ${ratingLine}! ` : ''}Eu ajudo negócios locais a melhorarem o perfil no Google Meu Negócio para aparecerem nas primeiras posições das buscas e terem seu próprio site. Posso te apresentar algumas melhorias rápidas sem nenhum compromisso?`,
 
-    `Oi ${nome}! Vi o estabelecimento de vocês no Maps${cityLine}. ${ratingLine ? `Impressionante — ${ratingLine}. ` : ''}Muitos clientes pesquisam online antes de visitar, e um site ajuda muito nisso. Seria legal conversar sobre isso? Trabalho com sites para negócios locais.`,
+    `Oi ${nome}! Vi o estabelecimento de vocês no Maps${cityLine}. ${ratingLine ? `Muito legal — ${ratingLine}. ` : ''}Hoje a grande maioria das pessoas pesquisa no Google antes de ir até o local. Eu ajudo negócios a melhorarem o Google Meu Negócio para aparecerem mais nas pesquisas, além de criar o site oficial para fechar mais vendas. Seria legal batermos um papo rápido sobre isso?`,
   ];
 
   // Seleciona variant baseado no hash do nome (determinístico)
@@ -63,7 +63,7 @@ function messageSemSite(p: Prospect): string {
 
 /**
  * Abordagem 2: Estabelecimento COM SITE
- * Foco: complemento/melhoria, sem afirmar problemas não verificados.
+ * Foco: Otimizar Google Meu Negócio para aparecer nas primeiras posições de busca
  */
 function messageComSite(p: Prospect): string {
   const nome = firstName(p.business_name);
@@ -72,9 +72,9 @@ function messageComSite(p: Prospect): string {
   const cityLine = city ? ` em ${city}` : '';
 
   const variants = [
-    `Oi! Vi o ${p.business_name}${cityLine} no Maps${ratingLine ? ' — ' + ratingLine : ''}. Trabalho com presença digital para negócios locais e adoraria mostrar como podemos complementar o site de vocês para atrair ainda mais clientes. Posso enviar algumas ideias?`,
+    `Oi! Vi o ${p.business_name}${cityLine} no Google Maps${ratingLine ? ' — ' + ratingLine : ''}. Trabalho otimizando o perfil do Google Meu Negócio para ajudar estabelecimentos a se destacarem e aparecerem nas primeiras posições de pesquisa quando clientes buscam no bairro. Posso te enviar algumas sugestões de melhoria sem compromisso?`,
 
-    `Olá ${nome}! Encontrei o ${p.business_name} pesquisando${p.category ? ` ${p.category.toLowerCase()}` : ''}${cityLine}. ${ratingLine ? `Vi que ${ratingLine} — parabéns! ` : ''}Trabalho ajudando negócios locais a melhorar sua presença online. Teria interesse em conversar sobre isso?`,
+    `Olá ${nome}! Encontrei o ${p.business_name} pesquisando${p.category ? ` ${p.category.toLowerCase()}` : ''}${cityLine}. ${ratingLine ? `Vi que ${ratingLine} — parabéns! ` : ''}Eu ajudo negócios da região a otimizarem o Google Meu Negócio para aumentarem a visibilidade nas pesquisas e receberem mais contatos no WhatsApp todos os dias. Teria interesse em ver como funciona?`,
   ];
 
   const idx = p.business_name.length % variants.length;
@@ -90,7 +90,7 @@ function messageGeral(p: Prospect): string {
   const cityLine = city ? ` em ${city}` : '';
   const ratingLine = formatRating(p.rating, p.review_count);
 
-  return `Oi! Vi o ${p.business_name}${cityLine} no Google Maps${ratingLine ? ' — ' + ratingLine : ''}. Trabalho com soluções digitais para negócios locais e adoraria apresentar o que fazemos. Posso te mostrar mais detalhes?`;
+  return `Oi! Vi o ${p.business_name}${cityLine} no Google Maps${ratingLine ? ' — ' + ratingLine : ''}. Trabalho ajudando empresas locais a melhorarem o Google Meu Negócio para aparecerem no topo das pesquisas e conquistarem mais clientes. Posso te mostrar uma demonstração rápida?`;
 }
 
 /** Determina o tipo de abordagem baseado nos dados disponíveis. */
