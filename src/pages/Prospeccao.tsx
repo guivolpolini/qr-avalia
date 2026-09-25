@@ -587,20 +587,41 @@ export default function Prospeccao() {
       {scraperOk === false && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
           <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-amber-800 text-sm">Google Maps Scraper offline</p>
-            <p className="text-amber-700 text-xs mt-1">
-              Para usar a busca, inicie o scraper localmente:
-            </p>
-            <ol className="text-amber-700 text-xs mt-2 space-y-1 list-decimal list-inside">
-              <li>Instale o <a href="https://www.docker.com/products/docker-desktop" target="_blank" rel="noopener noreferrer" className="underline">Docker Desktop</a></li>
-              <li>Clone: <code className="bg-amber-100 px-1 rounded">git clone https://github.com/Mahanaicoach/google-maps-scraper-kit</code></li>
-              <li>Inicie: <code className="bg-amber-100 px-1 rounded">docker compose up -d</code></li>
-              <li>Verifique: <code className="bg-amber-100 px-1 rounded">curl http://localhost:8080/api/v1/jobs</code></li>
-            </ol>
-            <p className="text-amber-600 text-xs mt-2">
-              Você ainda pode gerenciar leads já importados na aba "Meus Leads".
-            </p>
+          <div className="text-xs text-amber-800">
+            {typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? (
+              <>
+                <p className="font-semibold text-sm text-amber-900 mb-1">
+                  Ambiente de Nuvem (Vercel)
+                </p>
+                <p className="text-amber-800 leading-relaxed">
+                  O Google Maps Scraper roda localmente no Docker da sua máquina para extrair dados sem custos de proxy.
+                  Para realizar novas buscas, abra o endereço local:
+                </p>
+                <div className="my-2 p-2 bg-amber-100/70 rounded-lg font-mono text-amber-950 font-medium">
+                  <a href="http://127.0.0.1:5173/prospeccao" target="_blank" rel="noreferrer" className="underline hover:text-amber-700">
+                    http://127.0.0.1:5173/prospeccao
+                  </a>
+                </div>
+                <p className="text-amber-700">
+                  💡 <strong>Na Vercel:</strong> você pode gerenciar todos os leads importados, editar textos e disparar mensagens na aba <strong>"Meus Leads"</strong>.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-amber-800 text-sm">Google Maps Scraper offline</p>
+                <p className="text-amber-700 mt-1">
+                  Para usar a busca, inicie o scraper localmente:
+                </p>
+                <ol className="text-amber-700 mt-2 space-y-1 list-decimal list-inside">
+                  <li>Instale o <a href="https://www.docker.com/products/docker-desktop" target="_blank" rel="noopener noreferrer" className="underline">Docker Desktop</a></li>
+                  <li>Inicie o container: <code className="bg-amber-100 px-1 rounded">docker compose -f c:\Users\guilherme\google-maps-scraper-kit\docker-compose.yml up -d</code></li>
+                  <li>Verifique: <code className="bg-amber-100 px-1 rounded">curl http://localhost:8080/api/v1/jobs</code></li>
+                </ol>
+                <p className="text-amber-600 mt-2">
+                  Você ainda pode gerenciar leads já importados na aba "Meus Leads".
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

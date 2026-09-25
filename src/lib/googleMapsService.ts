@@ -35,10 +35,26 @@ export interface ScrapeOptions {
 /** Verifica se o scraper está rodando. Timeout rápido de 3s. */
 export async function checkScraperAvailable(): Promise<boolean> {
   try {
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    // Se estiver em produção (Vercel) e apontando para rota local/proxy,
+    // o servidor da nuvem não tem acesso direto ao Docker local sem túnel público.
+    if (!isLocalhost && (SCRAPER_BASE.startsWith('/') || SCRAPER_BASE.includes('localhost') || SCRAPER_BASE.includes('127.0.0.1'))) {
+      return false;
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(`${SCRAPER_BASE}/api/v1/jobs`, { signal: controller.signal });
     clearTimeout(timer);
+
+    // Valida se a resposta é JSON da API e não o fallback HTML da Vercel (index.html)
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return false;
+    }
+
     return res.ok;
   } catch {
     return false;
@@ -47,6 +63,15 @@ export async function checkScraperAvailable(): Promise<boolean> {
 
 /** Cria um job de scraping. Retorna o ID do job. */
 async function createJob(opts: ScrapeOptions): Promise<string> {
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  if (!isLocalhost && (SCRAPER_BASE.startsWith('/') || SCRAPER_BASE.includes('localhost') || SCRAPER_BASE.includes('127.0.0.1'))) {
+    throw new Error(
+      'O scraper do Google Maps roda localmente no Docker da sua máquina. Para buscar novos leads, acesse o sistema pelo endereço local http://127.0.0.1:5173/prospeccao. Na Vercel você pode gerenciar todos os leads importados.'
+    );
+  }
+
   const body = {
     name: 'qr-avalia-scrape',
     keywords: [opts.keyword],
