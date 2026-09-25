@@ -50,6 +50,49 @@ export interface GoogleSeoStatus {
   estabelecimento?: Pick<Estabelecimento, 'id' | 'nome'> | null;
 }
 
+// ── Prospecção (módulo isolado) ───────────────────────────────────
+export type ProspectStatus =
+  | 'novo'
+  | 'contatado'
+  | 'interessado'
+  | 'cliente'
+  | 'nao_interessado';
+
+export interface Prospect {
+  id: string;
+  business_name: string;
+  category: string;
+  address: string;
+  phone: string;
+  website: string;
+  google_maps_url: string;
+  rating: number | null;
+  review_count: number;
+  instagram: string;
+  source: string;
+  status: ProspectStatus;
+  notes: string;
+  ultima_mensagem: string;
+  ultima_mensagem_em: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Raw result from Google Maps Scraper API
+export interface ScraperResult {
+  title: string;
+  category?: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  google_maps_url?: string;
+  rating?: number;
+  reviews?: number;
+  instagram?: string;
+  // raw fields we ignore (lat, lng, emails, hours, etc.)
+  [key: string]: unknown;
+}
+
 export interface Scan {
   id: string;
   tipo: string;

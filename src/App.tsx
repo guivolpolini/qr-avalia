@@ -13,6 +13,7 @@ const Placas = lazy(() => import('@/pages/Placas'));
 const Scans = lazy(() => import('@/pages/Scans'));
 const GoogleSeo = lazy(() => import('@/pages/GoogleSeo'));
 const Configuracoes = lazy(() => import('@/pages/Configuracoes'));
+const Prospeccao = lazy(() => import('@/pages/Prospeccao'));
 
 function PageLoader() {
   return (
@@ -95,6 +96,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Configuracoes />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/prospeccao"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Prospeccao />
                 </Layout>
               </ProtectedRoute>
             }
