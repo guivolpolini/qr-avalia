@@ -10,7 +10,11 @@
 
 import type { ScraperResult, Prospect } from '@/types/database';
 
-const SCRAPER_BASE = (import.meta.env.VITE_SCRAPER_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+const rawScraperUrl = (import.meta.env.VITE_SCRAPER_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+// Use local Vite proxy if pointing to localhost:8080 to prevent CORS issues
+const SCRAPER_BASE = (rawScraperUrl.includes('localhost:8080') || rawScraperUrl.includes('127.0.0.1:8080'))
+  ? '/scraper-api'
+  : rawScraperUrl;
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 120_000; // 2 min max
 
@@ -44,14 +48,17 @@ export async function checkScraperAvailable(): Promise<boolean> {
 /** Cria um job de scraping. Retorna o ID do job. */
 async function createJob(opts: ScrapeOptions): Promise<string> {
   const body = {
-    keyword: opts.keyword,
-    lat: opts.lat,
-    lng: opts.lng,
-    depth: Math.min(opts.depth ?? 5, 20),
-    zoom: 15,
+    name: 'qr-avalia-scrape',
+    keywords: [opts.keyword],
     lang: 'pt',
-    slow_mode: false,
-    max_results: Math.min(opts.maxResults ?? 50, 100),
+    zoom: 15,
+    lat: String(opts.lat),
+    lon: String(opts.lng),
+    fast_mode: false,
+    radius: 10000,
+    depth: Math.min(opts.depth ?? 5, 20),
+    email: false,
+    max_time: 120,
   };
 
   const res = await fetch(`${SCRAPER_BASE}/api/v1/jobs`, {
@@ -66,8 +73,9 @@ async function createJob(opts: ScrapeOptions): Promise<string> {
   }
 
   const data = await res.json();
-  if (!data?.id) throw new Error('Resposta inválida do scraper (sem ID)');
-  return String(data.id);
+  const id = data?.id ?? data?.ID;
+  if (!id) throw new Error('Resposta inválida do scraper (sem ID)');
+  return String(id);
 }
 
 /** Poll até o job completar ou timeout. */
@@ -80,10 +88,13 @@ async function waitForJob(jobId: string): Promise<ScrapeJobStatus> {
     const res = await fetch(`${SCRAPER_BASE}/api/v1/jobs/${jobId}`);
     if (!res.ok) throw new Error(`Erro ao verificar job: ${res.status}`);
 
-    const data: ScrapeJobStatus = await res.json();
+    const data = await res.json();
+    const status = String(data.Status ?? data.status ?? '').toLowerCase();
 
-    if (data.status === 'completed') return data;
-    if (data.status === 'failed') throw new Error('Job falhou no scraper');
+    if (status === 'ok' || status === 'completed') {
+      return { id: jobId, status: 'completed' };
+    }
+    if (status === 'failed') throw new Error('Job falhou no scraper');
   }
 
   throw new Error('Timeout aguardando scraper (2 min). Tente com menos resultados.');
@@ -142,14 +153,14 @@ export function normalizeResult(raw: ScraperResult): Omit<Prospect, 'id' | 'stat
   const name = String(raw.title ?? raw.name ?? '').trim();
   const phone = String(raw.phone ?? raw.telefone ?? '').trim();
   const website = String(raw.website ?? raw.site ?? '').trim();
-  const gmapsUrl = String(raw.google_maps_url ?? raw.url ?? raw.link ?? '').trim();
+  const gmapsUrl = String(raw.link ?? raw.google_maps_url ?? raw.url ?? raw.web_url ?? '').trim();
 
   // Rating pode vir como string "4.5" ou número
-  const rawRating = raw.rating ?? raw.stars;
+  const rawRating = raw.review_rating ?? raw.rating ?? raw.stars;
   const rating = rawRating != null ? parseFloat(String(rawRating)) : null;
 
   // Reviews pode vir como string "1,234" — remove separadores
-  const rawReviews = raw.reviews ?? raw.review_count ?? raw.reviews_count ?? 0;
+  const rawReviews = raw.review_count ?? raw.reviews ?? raw.reviews_count ?? 0;
   const reviewCount = parseInt(String(rawReviews).replace(/\D/g, ''), 10) || 0;
 
   return {
