@@ -30,67 +30,73 @@ function extractCity(address: string): string {
   return '';
 }
 
-/** Formata avaliação de forma natural. */
+/** Formata avaliação de forma natural e enxuta. */
 function formatRating(rating: number | null, reviewCount: number): string {
   if (!rating || reviewCount === 0) return '';
-  const stars = rating >= 4.5 ? 'ótima avaliação' : rating >= 4.0 ? 'boa avaliação' : '';
-  if (!stars) return '';
-  return `vi que vocês têm ${stars} no Maps (${rating} ⭐ com ${reviewCount} avaliações)`;
+  if (rating >= 4.5) return ` (nota ${rating.toFixed(1)} ⭐ com ${reviewCount} avaliações)`;
+  if (rating >= 4.0) return ` (nota ${rating.toFixed(1)} ⭐)`;
+  return '';
 }
 
 /**
  * Abordagem 1: Estabelecimento SEM SITE
- * Foco: Google Meu Negócio + aparecer nas pesquisas + presença digital com site
+ * Foco: Posição no Google Meu Negócio + Perda de clientes para concorrentes + Solução site
  */
-function messageSemSite(p: Prospect): string {
+function messageSemSite(p: Prospect, variantIndex?: number): string {
   const nome = firstName(p.business_name);
   const city = extractCity(p.address);
   const ratingLine = formatRating(p.rating, p.review_count);
-  const cityLine = city ? ` em ${city}` : '';
+  const categoria = p.category ? p.category.toLowerCase() : 'serviços';
+  const localizacao = city ? ` em ${city}` : ' aqui na região';
 
   const variants = [
-    `Olá! Vi o ${p.business_name}${cityLine} no Google Maps${ratingLine ? ' e ' + ratingLine : ''}. Eu trabalho otimizando o perfil do Google Meu Negócio para ajudar empresas a aparecerem no topo das pesquisas do Google e também criando sites profissionais (vi que vocês ainda não têm um). Isso ajuda muito a atrair novos clientes na região! Posso te mostrar como funciona na prática? 😊`,
+    // 1. Gancho de Oportunidade / Concorrência (Maior conversão)
+    `Oi pessoal da ${p.business_name}, tudo bem?\n\nEstava pesquisando ${categoria}${localizacao} e encontrei o perfil de vocês no Google.\n\nVi que o trabalho de vocês é bem avaliado${ratingLine}, mas reparei que vocês ainda não têm um site cadastrado e o perfil no Google Meu Negócio tá perdendo posições pra outros concorrentes que aparecem primeiro nas buscas.\n\nEu trabalho colocando empresas locais no topo das pesquisas do Google e criando páginas rápidas para receber clientes no WhatsApp. Posso te mandar 2 ajustes rápidos pra vocês melhorarem isso?`,
 
-    `Oi, tudo bem? Achei o ${p.business_name} pesquisando${p.category ? ` ${p.category.toLowerCase()}` : ' negócios'}${cityLine}. ${ratingLine ? `Parabéns — ${ratingLine}! ` : ''}Eu ajudo negócios locais a melhorarem o perfil no Google Meu Negócio para aparecerem nas primeiras posições das buscas e terem seu próprio site. Posso te apresentar algumas melhorias rápidas sem nenhum compromisso?`,
+    // 2. Direto ao Proprietário / Decisor
+    `Olá, tudo bem? É com o responsável ou proprietário da ${p.business_name}?\n\nAchei o perfil de vocês no Google Maps enquanto pesquisava ${categoria}${localizacao}. Vocês têm um ótimo negócio, mas hoje concorrentes da região estão aparecendo na frente de vocês quando as pessoas buscam no Google.\n\nEu ajudo estabelecimentos locais a dominarem as primeiras posições do Google Meu Negócio e terem um site profissional para fechar mais vendas. Posso te enviar um diagnóstico rápido mostrando o que falta pra vocês liderarem as buscas?`,
 
-    `Oi ${nome}! Vi o estabelecimento de vocês no Maps${cityLine}. ${ratingLine ? `Muito legal — ${ratingLine}. ` : ''}Hoje a grande maioria das pessoas pesquisa no Google antes de ir até o local. Eu ajudo negócios a melhorarem o Google Meu Negócio para aparecerem mais nas pesquisas, além de criar o site oficial para fechar mais vendas. Seria legal batermos um papo rápido sobre isso?`,
+    // 3. Conversa Curta e Objetiva
+    `Oi ${nome}, tudo bem?\n\nVi o perfil de vocês no Google Maps${localizacao} e achei muito bacana a estrutura${ratingLine}.\n\nHoje a grande maioria dos clientes pesquisa no Google antes de decidir onde ir. Eu trabalho otimizando o Google Meu Negócio para colocar o perfil de vocês no topo das pesquisas e crio sites modernos focados em atrair clientes.\n\nVocê teria 2 minutinhos pra ver uma demonstração rápida de como colocar vocês em destaque no Google?`,
   ];
 
-  // Seleciona variant baseado no hash do nome (determinístico)
-  const idx = p.business_name.length % variants.length;
+  const idx = variantIndex !== undefined ? variantIndex % variants.length : (p.business_name.length % variants.length);
   return variants[idx];
 }
 
 /**
  * Abordagem 2: Estabelecimento COM SITE
- * Foco: Otimizar Google Meu Negócio para aparecer nas primeiras posições de busca
+ * Foco: Subir para o Top 3 do Google Maps e superar concorrentes locais
  */
-function messageComSite(p: Prospect): string {
+function messageComSite(p: Prospect, variantIndex?: number): string {
   const nome = firstName(p.business_name);
   const city = extractCity(p.address);
   const ratingLine = formatRating(p.rating, p.review_count);
-  const cityLine = city ? ` em ${city}` : '';
+  const categoria = p.category ? p.category.toLowerCase() : 'serviços';
+  const localizacao = city ? ` em ${city}` : ' na região';
 
   const variants = [
-    `Oi! Vi o ${p.business_name}${cityLine} no Google Maps${ratingLine ? ' — ' + ratingLine : ''}. Trabalho otimizando o perfil do Google Meu Negócio para ajudar estabelecimentos a se destacarem e aparecerem nas primeiras posições de pesquisa quando clientes buscam no bairro. Posso te enviar algumas sugestões de melhoria sem compromisso?`,
+    // 1. Ultrapassar concorrentes no Top 3 do Maps
+    `Oi pessoal da ${p.business_name}, tudo bem?\n\nEncontrei o perfil de vocês no Google Maps enquanto pesquisava ${categoria}${localizacao}.\n\nParabéns pelo espaço e atendimento${ratingLine}! Reparei que vocês já têm site, mas no Google Meu Negócio ainda tem outros concorrentes aparecendo na frente de vocês quando os clientes pesquisam pelo celular no bairro.\n\nEu sou especialista em SEO local e posicionamento no Google Maps. Posso te mandar uma análise rápida de como colocar o perfil de vocês no Top 3 das pesquisas?`,
 
-    `Olá ${nome}! Encontrei o ${p.business_name} pesquisando${p.category ? ` ${p.category.toLowerCase()}` : ''}${cityLine}. ${ratingLine ? `Vi que ${ratingLine} — parabéns! ` : ''}Eu ajudo negócios da região a otimizarem o Google Meu Negócio para aumentarem a visibilidade nas pesquisas e receberem mais contatos no WhatsApp todos os dias. Teria interesse em ver como funciona?`,
+    // 2. Foco em mais ligações e mensagens no WhatsApp
+    `Olá ${nome}, tudo bem? É com o responsável pelo ${p.business_name}?\n\nEstava analisando o posicionamento das empresas de ${categoria}${localizacao} no Google. O perfil de vocês tem potencial enorme, mas notei alguns pontos no Google Meu Negócio que estão limitando vocês de receberem mais contatos todos os dias.\n\nPreparei um resumo bem prático com ajustes que aumentam a visibilidade do perfil nas pesquisas locais. Quer que eu te envie por aqui sem compromisso?`,
   ];
 
-  const idx = p.business_name.length % variants.length;
+  const idx = variantIndex !== undefined ? variantIndex % variants.length : (p.business_name.length % variants.length);
   return variants[idx];
 }
 
 /**
  * Abordagem 3: Geral
- * Quando não há informações suficientes para personalizar.
+ * Quando não há dados suficientes para segmentar site.
  */
-function messageGeral(p: Prospect): string {
+function messageGeral(p: Prospect, variantIndex?: number): string {
   const city = extractCity(p.address);
-  const cityLine = city ? ` em ${city}` : '';
+  const localizacao = city ? ` em ${city}` : ' na região';
   const ratingLine = formatRating(p.rating, p.review_count);
 
-  return `Oi! Vi o ${p.business_name}${cityLine} no Google Maps${ratingLine ? ' — ' + ratingLine : ''}. Trabalho ajudando empresas locais a melhorarem o Google Meu Negócio para aparecerem no topo das pesquisas e conquistarem mais clientes. Posso te mostrar uma demonstração rápida?`;
+  return `Oi pessoal da ${p.business_name}, tudo bem?\n\nVi o perfil de vocês no Google Maps${localizacao}${ratingLine}.\n\nEu trabalho otimizando o Google Meu Negócio para negócios locais aparecerem nas primeiras posições de pesquisa do Google quando potenciais clientes buscam no bairro.\n\nPreparei algumas sugestões rápidas para ajudar a aumentar a visibilidade de vocês nas buscas. Posso te mandar por aqui?`;
 }
 
 /** Determina o tipo de abordagem baseado nos dados disponíveis. */
@@ -104,12 +110,12 @@ export function getApproachType(p: Prospect): ApproachType {
 }
 
 /** Gera mensagem de prospecção para um prospect. */
-export function generateMessage(p: Prospect): string {
+export function generateMessage(p: Prospect, variantIndex?: number): string {
   const type = getApproachType(p);
   switch (type) {
-    case 'sem_site': return messageSemSite(p);
-    case 'com_site': return messageComSite(p);
-    default: return messageGeral(p);
+    case 'sem_site': return messageSemSite(p, variantIndex);
+    case 'com_site': return messageComSite(p, variantIndex);
+    default: return messageGeral(p, variantIndex);
   }
 }
 

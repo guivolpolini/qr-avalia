@@ -75,7 +75,8 @@ interface WhatsAppModalProps {
 }
 
 function WhatsAppModal({ prospect, onClose, onSaved }: WhatsAppModalProps) {
-  const [message, setMessage] = useState(() => generateMessage(prospect));
+  const [variant, setVariant] = useState(0);
+  const [message, setMessage] = useState(() => generateMessage(prospect, 0));
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -91,7 +92,11 @@ function WhatsAppModal({ prospect, onClose, onSaved }: WhatsAppModalProps) {
   }
 
   function handleRegenerate() {
-    setMessage(generateMessage(prospect));
+    setVariant(v => {
+      const next = v + 1;
+      setMessage(generateMessage(prospect, next));
+      return next;
+    });
   }
 
   async function handleOpenWhatsApp() {
