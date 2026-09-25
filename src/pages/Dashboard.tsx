@@ -275,28 +275,6 @@ export default function Dashboard() {
         totalNfc={techDistribution.totalNfc}
         dispositivos={techDistribution.dispositivos}
       />
-
-      {/* Fluxo e Guia Rápido */}
-      <div className="card p-6">
-        <h2 className="text-lg font-bold text-slate-900 mb-1">Como funciona</h2>
-        <p className="text-sm text-slate-500 mb-5">O fluxo dos seus QR Codes e Tags NFC dinâmicos</p>
-
-        <div className="grid md:grid-cols-3 gap-4">
-          {[
-            { step: '1', title: 'Imprima ou grave', desc: 'Gere QR Codes para imprimir nas placas ou Tags NFC para gravar no celular. Ambos apontam para URLs do sistema.' },
-            { step: '2', title: 'Associe o estabelecimento', desc: 'No painel, vincule cada QR Code ou Tag NFC a um estabelecimento e seu link do Google.' },
-            { step: '3', title: 'Troque quando quiser', desc: 'Altere a associação sem reimprimir ou regravar. O QR ou Tag física continua funcionando.' },
-          ].map((s) => (
-            <div key={s.step} className="relative p-4 rounded-lg border border-slate-200 bg-slate-50/50">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-brand-600 text-white text-sm font-bold mb-3">
-                {s.step}
-              </div>
-              <h3 className="font-semibold text-slate-900 text-sm mb-1">{s.title}</h3>
-              <p className="text-sm text-slate-500">{s.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
