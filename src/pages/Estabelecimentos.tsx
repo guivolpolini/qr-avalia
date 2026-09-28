@@ -157,7 +157,7 @@ export default function Estabelecimentos() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por nome, telefone ou endereço..."
-          className="input pl-10 max-w-md"
+          className="input pl-10 w-full sm:max-w-md"
         />
       </div>
 
@@ -238,9 +238,10 @@ export default function Estabelecimentos() {
                       Link do Google <ExternalLink size={11} />
                     </a>
                   </div>
-                  <span className={e.ativo ? 'badge-green' : 'badge-red'}>
+                  <button onClick={() => toggleAtivo(e)} className={e.ativo ? 'badge-green' : 'badge-red'}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${e.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} />
                     {e.ativo ? 'Ativo' : 'Inativo'}
-                  </span>
+                  </button>
                 </div>
                 {e.telefone && <p className="text-sm text-slate-500 flex items-center gap-1.5 mb-1"><Phone size={13} /> {e.telefone}</p>}
                 {e.endereco && <p className="text-sm text-slate-500 flex items-center gap-1.5"><MapPin size={13} /> {e.endereco}</p>}
@@ -255,10 +256,17 @@ export default function Estabelecimentos() {
         </>
       )}
 
-      {/* Modal */}
+      {/* Modal / Bottom Sheet */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowModal(false)}>
-          <div className="card w-full max-w-lg p-6 animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl animate-slide-up sm:animate-scale-in max-h-[88vh] sm:max-h-[90vh] overflow-y-auto pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:pb-6 border border-slate-100 sm:border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-slate-900">{editing ? 'Editar Estabelecimento' : 'Novo Estabelecimento'}</h2>
               <button onClick={() => setShowModal(false)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
@@ -345,8 +353,15 @@ export default function Estabelecimentos() {
 
       {/* Prompt do site */}
       {promptFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in" onClick={() => setPromptFor(null)}>
-          <div className="card w-full max-w-xl p-6 animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"
+          onClick={() => setPromptFor(null)}
+        >
+          <div
+            className="bg-white w-full max-w-xl rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl animate-slide-up sm:animate-scale-in max-h-[88vh] sm:max-h-[90vh] overflow-y-auto pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:pb-6 border border-slate-100 sm:border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <Sparkles size={18} className="text-brand-500" /> Prompt do site — {promptFor.nome}

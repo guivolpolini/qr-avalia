@@ -302,7 +302,7 @@ export default function Placas() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por código ou estabelecimento..."
-          className="input pl-10 max-w-md"
+          className="input pl-10 w-full sm:max-w-md"
         />
       </div>
 
@@ -576,8 +576,15 @@ export default function Placas() {
 
 function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="card w-full max-w-md p-6 animate-scale-in max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl animate-slide-up sm:animate-scale-in max-h-[88vh] sm:max-h-[90vh] overflow-y-auto pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:pb-6 border border-slate-100 sm:border-slate-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold text-slate-900">{title}</h2>
           <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">

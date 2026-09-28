@@ -111,11 +111,15 @@ function WhatsAppModal({ prospect, onClose, onSaved }: WhatsAppModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg"
+        className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up sm:animate-scale-in max-h-[90vh] overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
         onClick={e => e.stopPropagation()}
       >
+        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 sm:hidden" />
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
