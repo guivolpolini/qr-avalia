@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Background Squircle -->
+  <rect width="512" height="512" rx="115" fill="url(#bgGrad)" />
+
+  <!-- Inner white QR Symbol + Stars -->
+  <g fill="#ffffff" filter="url(#shadow)">
+    <!-- Top-left QR corner -->
+    <rect x="110" y="110" width="110" height="110" rx="24" fill="#ffffff" />
+    <rect x="135" y="135" width="60" height="60" rx="12" fill="#1d4ed8" />
+    <rect x="150" y="150" width="30" height="30" rx="6" fill="#ffffff" />
+
+    <!-- Top-right QR corner -->
+    <rect x="292" y="110" width="110" height="110" rx="24" fill="#ffffff" />
+    <rect x="317" y="135" width="60" height="60" rx="12" fill="#1d4ed8" />
+    <rect x="332" y="150" width="30" height="30" rx="6" fill="#ffffff" />
+
+    <!-- Bottom-left QR corner -->
+    <rect x="110" y="292" width="110" height="110" rx="24" fill="#ffffff" />
+    <rect x="135" y="317" width="60" height="60" rx="12" fill="#1d4ed8" />
+    <rect x="150" y="332" width="30" height="30" rx="6" fill="#ffffff" />
+
+    <!-- Modern NFC wave & Evaluation badge in bottom-right -->
+    <circle cx="347" cy="347" r="55" fill="#ffffff" />
+    <path d="M 347 312 L 357 335 L 382 338 L 363 355 L 368 380 L 347 367 L 326 380 L 331 355 L 312 338 L 337 335 Z" fill="#f59e0b" />
+  </g>
+</svg>

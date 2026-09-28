@@ -9,6 +9,10 @@
   }
   body {
     @apply font-sans bg-slate-50 text-slate-800;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, a {
+    touch-action: manipulation;
   }
 }
 
@@ -102,4 +106,19 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
