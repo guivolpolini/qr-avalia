@@ -1,12 +1,14 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import QRCode from 'qrcode';
 import {
   Plus, QrCode as QrIcon, Nfc as NfcIcon, Download, Link2, Unlink, X,
-  Loader2, Search, Eye, Copy, Check, Trash2, Printer,
+  Loader2, Search, Eye, Copy, Check, Trash2, Printer, Camera,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
 import PrintModal from '@/components/PrintModal';
+
+const ActivatePlacaModal = lazy(() => import('@/components/ActivatePlacaModal'));
 
 type Tipo = 'qr' | 'nfc';
 type CreateTipo = 'qr' | 'nfc' | 'ambos';
@@ -42,6 +44,7 @@ export default function Placas() {
   const [qrDataUrls, setQrDataUrls] = useState<Record<string, string>>({});
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printPlacaId, setPrintPlacaId] = useState<string | undefined>(undefined);
+  const [showActivateModal, setShowActivateModal] = useState(false);
 
   const baseUrl = window.location.origin;
 
@@ -242,7 +245,15 @@ export default function Placas() {
           <h1 className="text-2xl font-bold text-slate-900">Placas</h1>
           <p className="text-sm text-slate-500 mt-1">QR Codes e Tags NFC, no mesmo lugar</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <button
+            onClick={() => setShowActivateModal(true)}
+            className="btn-primary bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800"
+            title="Escanear QR Code com a câmera para ativar ou vincular"
+          >
+            <Camera size={18} />
+            <span>Ativar / Scanner</span>
+          </button>
           <button
             onClick={() => {
               setPrintPlacaId(undefined);
@@ -255,9 +266,9 @@ export default function Placas() {
             <Printer size={18} />
             Imprimir / PDF
           </button>
-          <button onClick={() => setShowCreate(true)} className="btn-primary">
+          <button onClick={() => setShowCreate(true)} className="btn-secondary">
             <Plus size={18} />
-            Gerar placas
+            Gerar em lote
           </button>
         </div>
       </div>
@@ -547,6 +558,17 @@ export default function Placas() {
             setPrintPlacaId(undefined);
           }}
         />
+      )}
+
+      {/* Modal de Ativação / Scanner */}
+      {showActivateModal && (
+        <Suspense fallback={null}>
+          <ActivatePlacaModal
+            isOpen={showActivateModal}
+            onClose={() => setShowActivateModal(false)}
+            onSuccess={() => load()}
+          />
+        </Suspense>
       )}
     </div>
   );

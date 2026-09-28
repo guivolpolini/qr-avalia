@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
+const ActivatePlacaModal = lazy(() => import('@/components/ActivatePlacaModal'));
+
 const desktopNavItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/estabelecimentos', label: 'Estabelecimentos', icon: Store },
@@ -32,6 +34,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showActivateModal, setShowActivateModal] = useState(false);
+
+  useEffect(() => {
+    if (location.search.includes('scan=true')) {
+      setShowActivateModal(true);
+    }
+  }, [location.search]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -72,6 +81,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </NavLink>
           ))}
         </nav>
+
+        <div className="px-3 pb-2 pt-1 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => setShowActivateModal(true)}
+            className="w-full btn-primary py-2.5 text-xs font-bold shadow-xs flex items-center justify-center gap-2"
+          >
+            <Camera size={16} />
+            <span>Ativar / Escanear Placa</span>
+          </button>
+        </div>
 
         <div className="px-3 py-4 border-t border-slate-200">
           <div className="flex items-center gap-3 px-3 py-2 mb-1">
@@ -150,13 +170,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           {/* 3. Ação Central: Escanear / Ativar */}
           <div className="flex flex-col items-center justify-center -mt-5">
-            <NavLink
-              to="/placas?scan=true"
-              className="flex items-center justify-center w-13 h-13 rounded-full bg-brand-600 text-white shadow-lg shadow-brand-500/35 border-3 border-white active:scale-95 transition-transform"
+            <button
+              type="button"
+              onClick={() => setShowActivateModal(true)}
+              className="flex items-center justify-center w-13 h-13 rounded-full bg-brand-600 text-white shadow-lg shadow-brand-500/35 border-3 border-white active:scale-95 transition-transform cursor-pointer"
               title="Escanear ou Ativar Placa"
             >
               <Camera size={22} />
-            </NavLink>
+            </button>
             <span className="text-[10px] font-semibold text-brand-600 mt-0.5">Ativar</span>
           </div>
 
@@ -166,9 +187,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             end
             className={({ isActive }) =>
               `flex flex-col items-center justify-center py-1 transition-colors ${
-                isActive && !location.search.includes('scan=true')
-                  ? 'text-brand-600 font-semibold'
-                  : 'text-slate-400 hover:text-slate-600'
+                isActive ? 'text-brand-600 font-semibold' : 'text-slate-400 hover:text-slate-600'
               }`
             }
           >
@@ -294,6 +313,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal / Bottom Sheet de Ativação e Scanner */}
+      {showActivateModal && (
+        <Suspense fallback={null}>
+          <ActivatePlacaModal
+            isOpen={showActivateModal}
+            onClose={() => setShowActivateModal(false)}
+          />
+        </Suspense>
       )}
     </div>
   );
