@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  WifiOff,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -35,6 +36,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showActivateModal, setShowActivateModal] = useState(false);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (location.search.includes('scan=true')) {
@@ -51,6 +64,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
+      {!isOnline && (
+        <div className="bg-amber-600 text-white text-xs font-semibold py-1.5 px-4 text-center sticky top-0 z-50 flex items-center justify-center gap-1.5 shadow-sm animate-fade-in">
+          <WifiOff size={14} />
+          <span>Sem conexão com a internet. Modificações só serão salvas quando você reconectar.</span>
+        </div>
+      )}
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col bg-white border-r border-slate-200 z-30">
         <div className="flex items-center gap-3 px-6 h-16 border-b border-slate-200">

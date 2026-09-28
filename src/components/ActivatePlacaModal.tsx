@@ -126,6 +126,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
         async (decodedText) => {
           const code = extrairCodigo(decodedText);
           if (code) {
+            if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(20);
             await stopCamera();
             handleLookupCode(code);
           }
@@ -305,6 +306,10 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
             ativo: true,
           })
           .eq('codigo', matchingNfcCode);
+      }
+
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate?.([30, 50, 30]);
       }
 
       if (onSuccess) onSuccess();

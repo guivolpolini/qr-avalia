@@ -26,5 +26,21 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ativar Placa",
+      "short_name": "Scanner",
+      "description": "Abrir câmera para escanear e ativar placa",
+      "url": "/placas?action=activate",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Novo Estabelecimento",
+      "short_name": "Novo",
+      "description": "Cadastrar novo estabelecimento",
+      "url": "/estabelecimentos?action=new",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
   ]
 }

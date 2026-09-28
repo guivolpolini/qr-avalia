@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Store, X, Search, Phone, MapPin, ExternalLink, Loader2, Sparkles, Copy, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
@@ -47,6 +48,7 @@ export default function Estabelecimentos() {
   const [search, setSearch] = useState('');
   const [promptFor, setPromptFor] = useState<Estabelecimento | null>(null);
   const [copied, setCopied] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     load();
@@ -72,6 +74,14 @@ export default function Estabelecimentos() {
     setError(null);
     setShowModal(true);
   }
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      openCreate();
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   function openEdit(e: Estabelecimento) {
     setEditing(e);

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
   Plus, QrCode as QrIcon, Nfc as NfcIcon, Download, Link2, Unlink, X,
@@ -45,8 +46,17 @@ export default function Placas() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printPlacaId, setPrintPlacaId] = useState<string | undefined>(undefined);
   const [showActivateModal, setShowActivateModal] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const baseUrl = window.location.origin;
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'activate') {
+      setShowActivateModal(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     load();
