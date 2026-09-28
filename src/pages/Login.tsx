@@ -6,8 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 export default function Login() {
   const { signIn, session } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => localStorage.getItem('qr_avalia_saved_email') || '');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,11 +18,16 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(email.trim(), password);
     setLoading(false);
     if (error) {
       setError(error);
     } else {
+      if (rememberMe) {
+        localStorage.setItem('qr_avalia_saved_email', email.trim());
+      } else {
+        localStorage.removeItem('qr_avalia_saved_email');
+      }
       navigate('/dashboard');
     }
   };
@@ -70,15 +76,19 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" method="post" action="#">
             <div>
               <label className="label" htmlFor="email">E-mail</label>
               <div className="relative">
                 <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   required
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck="false"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input pl-10"
@@ -93,8 +103,10 @@ export default function Login() {
                 <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="input pl-10"
@@ -103,7 +115,19 @@ export default function Login() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+            <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded text-brand-600 border-slate-300 focus:ring-brand-500"
+                />
+                <span className="font-medium text-slate-700">Lembrar meu e-mail</span>
+              </label>
+            </div>
+
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3 active:scale-[0.99] transition-transform">
               {loading ? <Loader2 size={18} className="animate-spin" /> : 'Entrar'}
             </button>
           </form>
