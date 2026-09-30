@@ -33,14 +33,27 @@ export default function QrRedirect() {
         setTimeout(() => reject(new Error('Network timeout')), 8000)
       );
 
-      const fetchPromise = supabase.rpc('resolve_qr_code', {
-        p_codigo: codigo.trim().toUpperCase(),
+      const cleanCode = codigo.trim().toUpperCase();
+      let fetchPromise = supabase.rpc('resolve_qr_code', {
+        p_codigo: cleanCode,
         p_user_agent: userAgent,
         p_ip: '',
         p_skip_scan: false,
       });
 
-      const { data: link, error } = await Promise.race([fetchPromise, timeoutPromise]);
+      let res = await Promise.race([fetchPromise, timeoutPromise]);
+
+      // Fallback para schemas antigos que só aceitam 3 parâmetros (sem p_skip_scan)
+      if (res.error && (res.error.code === 'PGRST202' || res.error.message?.includes('schema cache'))) {
+        const fallbackPromise = supabase.rpc('resolve_qr_code', {
+          p_codigo: cleanCode,
+          p_user_agent: userAgent,
+          p_ip: '',
+        });
+        res = await Promise.race([fallbackPromise, timeoutPromise]);
+      }
+
+      const { data: link, error } = res;
 
       if (error) {
         throw error;
