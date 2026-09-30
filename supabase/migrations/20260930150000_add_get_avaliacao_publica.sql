@@ -3,7 +3,11 @@ ALTER TABLE estabelecimentos ADD COLUMN IF NOT EXISTS filtro_estrelas_ativo bool
 ALTER TABLE estabelecimentos ADD COLUMN IF NOT EXISTS canal_queixas text DEFAULT 'ambos';
 ALTER TABLE estabelecimentos ADD COLUMN IF NOT EXISTS email_notificacao text DEFAULT '';
 
--- 2. Permissão de SELECT para clientes anônimos lerem estabelecimentos ativos
+-- 2. Limpeza de funções sobrecarregadas antigas (3 parâmetros) para evitar erro PGRST203
+DROP FUNCTION IF EXISTS public.resolve_nfc_tag(text, text, text);
+DROP FUNCTION IF EXISTS public.resolve_qr_code(text, text, text);
+
+-- 3. Permissão de SELECT para clientes anônimos lerem estabelecimentos ativos
 DROP POLICY IF EXISTS "public_select_active_estabelecimentos" ON estabelecimentos;
 CREATE POLICY "public_select_active_estabelecimentos" ON estabelecimentos
   FOR SELECT TO anon

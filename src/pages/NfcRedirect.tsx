@@ -37,6 +37,7 @@ export default function NfcRedirect() {
         p_codigo: codigo,
         p_user_agent: userAgent,
         p_ip: '',
+        p_skip_scan: false,
       });
 
       const { data: link, error } = await Promise.race([fetchPromise, timeoutPromise]);
