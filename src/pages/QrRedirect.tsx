@@ -34,7 +34,7 @@ export default function QrRedirect() {
       );
 
       const fetchPromise = supabase.rpc('resolve_qr_code', {
-        p_codigo: codigo,
+        p_codigo: codigo.trim().toUpperCase(),
         p_user_agent: userAgent,
         p_ip: '',
         p_skip_scan: false,
