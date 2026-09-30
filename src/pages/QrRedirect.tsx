@@ -215,7 +215,7 @@ export default function QrRedirect() {
 
         <div>
           <a
-            href={`https://wa.me/5514997424040?text=${encodeURIComponent(`Olá! Estou com a placa ${codigo} do QR Avalia e gostaria de mais informações.`)}`}
+            href={`https://wa.me/5511977610468?text=${encodeURIComponent(`Olá! Estou com a placa ${codigo} do QR Avalia e gostaria de mais informações.`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-2xl bg-emerald-600 text-white text-sm font-bold shadow-md shadow-emerald-600/20 hover:bg-emerald-700 active:scale-95 transition-all text-center"

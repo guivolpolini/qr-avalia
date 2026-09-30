@@ -421,7 +421,7 @@ export default function RelatorioPublico() {
         </p>
         <div>
           <a
-            href="https://wa.me/5514997424040?text=Ol%C3%A1%2C%20vi%20o%20painel%20do%20QR%20Avalia%20e%20gostaria%20de%20solicitar%20mais%20informa%C3%A7%C3%B5es"
+            href="https://wa.me/5511977610468?text=Ol%C3%A1%2C%20vi%20o%20painel%20do%20QR%20Avalia%20e%20gostaria%20de%20solicitar%20mais%20informa%C3%A7%C3%B5es"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300 transition-colors font-semibold"
