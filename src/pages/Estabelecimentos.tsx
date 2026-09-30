@@ -369,11 +369,9 @@ export default function Estabelecimentos() {
       {showModal && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"
-          onClick={() => setShowModal(false)}
         >
           <div
             className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl animate-slide-up sm:animate-scale-in max-h-[88vh] sm:max-h-[90vh] overflow-y-auto pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:pb-6 border border-slate-100 sm:border-slate-200"
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
             <div className="flex items-center justify-between mb-5">
@@ -385,7 +383,16 @@ export default function Estabelecimentos() {
 
             {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form
+              onSubmit={handleSubmit}
+              onKeyDown={(e) => {
+                // Impede que apertar Enter em campos de texto feche o modal ou envie antes da hora
+                if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+                  e.preventDefault();
+                }
+              }}
+              className="space-y-4"
+            >
               <div>
                 <label className="label">Nome do estabelecimento *</label>
                 <input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} className="input" placeholder="Ex: Ótica G&G" />
