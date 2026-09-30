@@ -675,6 +675,17 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                 >
                   Ativar outra placa
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleReset();
+                    onClose();
+                  }}
+                  className="w-full py-2.5 text-xs font-semibold text-slate-500 hover:text-slate-700 active:scale-95 transition-all cursor-pointer"
+                >
+                  Concluir e Voltar ao Painel
+                </button>
               </div>
             </div>
           )}

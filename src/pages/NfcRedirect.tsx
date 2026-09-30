@@ -62,6 +62,11 @@ export default function NfcRedirect() {
               <Loader2 size={20} className="animate-spin text-brand-400 mx-auto mt-4" />
             </>
           )}
+          <div className="mt-6">
+            <a href="/dashboard" className="text-xs text-slate-400 hover:text-slate-600 underline">
+              Cancelar e voltar ao painel
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -81,6 +86,16 @@ export default function NfcRedirect() {
           <p className="text-xs text-slate-400 mb-1">Código consultado</p>
           <p className="font-mono font-bold text-slate-700">{codigo ?? '—'}</p>
         </div>
+
+        <div className="mt-6">
+          <a
+            href="/dashboard"
+            className="block w-full py-3 px-4 rounded-xl bg-brand-600 text-white text-sm font-bold shadow-xs hover:bg-brand-700 active:scale-95 transition-all text-center"
+          >
+            ← Voltar para o Painel
+          </a>
+        </div>
+
         <p className="text-xs text-slate-400 mt-6">
           Se você acredita que isso é um erro, entre em contato com o administrador do sistema.
         </p>

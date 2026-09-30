@@ -14,9 +14,20 @@ import {
   Menu,
   X,
   ChevronRight,
+  ChevronLeft,
   WifiOff,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+
+const PAGE_TITLES: Record<string, string> = {
+  '/dashboard': 'Início',
+  '/estabelecimentos': 'Estabelecimentos',
+  '/placas': 'Placas e Tags',
+  '/scans': 'Histórico de Scans',
+  '/google-seo': 'Google & SEO',
+  '/prospeccao': 'Prospecção Local',
+  '/configuracoes': 'Configurações',
+};
 
 const ActivatePlacaModal = lazy(() => import('@/components/ActivatePlacaModal'));
 
@@ -60,6 +71,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navigate('/login');
   };
 
+  const handleBack = () => {
+    if (window.history.state && typeof window.history.state.idx === 'number' && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
+  const isSubpage = location.pathname !== '/dashboard';
   const isMoreActive = ['/scans', '/google-seo', '/prospeccao', '/configuracoes'].includes(location.pathname);
 
   return (
@@ -132,20 +152,52 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Mobile Top Bar (Estilo iOS App Header) */}
+      {/* Mobile Top Bar (Estilo iOS App Header com Navegação e Voltar) */}
       <header className="lg:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 pt-[env(safe-area-inset-top,0px)]">
-        <div className="flex items-center justify-between h-14 px-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-brand-600 text-white shadow-xs">
-              <QrIcon size={17} />
+        <div className="flex items-center justify-between h-14 px-3">
+          {isSubpage ? (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="flex items-center gap-1 py-1.5 px-2 rounded-xl text-slate-700 hover:text-brand-600 active:bg-slate-100 active:scale-95 transition-all cursor-pointer"
+              aria-label="Voltar"
+            >
+              <ChevronLeft size={22} className="stroke-[2.5] text-brand-600" />
+              <span className="text-sm font-bold text-slate-800">Voltar</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2.5 pl-1">
+              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-brand-600 text-white shadow-xs">
+                <QrIcon size={17} />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-slate-900 text-sm tracking-tight leading-none">QR Avalia</span>
+                <span className="text-[10px] text-slate-400 font-medium">Painel Administrativo</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="font-extrabold text-slate-900 text-sm tracking-tight leading-none">QR Avalia</span>
-              <span className="text-[10px] text-slate-400 font-medium">Admin Mobile</span>
-            </div>
-          </div>
+          )}
 
-          <div className="flex items-center gap-2">
+          {isSubpage && (
+            <div className="flex flex-col items-center min-w-0 px-2 text-center">
+              <span className="font-extrabold text-slate-900 text-sm tracking-tight leading-none truncate max-w-[170px]">
+                {PAGE_TITLES[location.pathname] || 'QR Avalia'}
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">Painel Admin</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            {isSubpage && (
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
+                title="Ir para o Início"
+                aria-label="Início"
+              >
+                <LayoutDashboard size={16} />
+              </button>
+            )}
             <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold border border-slate-200">
               {user?.email?.[0]?.toUpperCase() ?? 'A'}
             </div>
