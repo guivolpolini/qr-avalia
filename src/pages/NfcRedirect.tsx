@@ -52,7 +52,8 @@ export default function NfcRedirect() {
       }
 
       setState('redirecting');
-      window.location.replace(link);
+      const targetUrl = link.startsWith('/') ? window.location.origin + link : link;
+      window.location.replace(targetUrl);
     } catch (err: any) {
       console.warn(`Tentativa ${attempt} de resolver Tag NFC falhou:`, err);
       if (attempt < 3) {

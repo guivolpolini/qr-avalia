@@ -14,6 +14,8 @@ const Scans = lazy(() => import('@/pages/Scans'));
 const GoogleSeo = lazy(() => import('@/pages/GoogleSeo'));
 const Configuracoes = lazy(() => import('@/pages/Configuracoes'));
 const Prospeccao = lazy(() => import('@/pages/Prospeccao'));
+const RelatorioPublico = lazy(() => import('@/pages/RelatorioPublico'));
+const AvaliacaoPublica = lazy(() => import('@/pages/AvaliacaoPublica'));
 
 function PageLoader() {
   return (
@@ -29,9 +31,11 @@ function App() {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Public redirects */}
+            {/* Public redirects and features */}
             <Route path="/q/:codigo" element={<QrRedirect />} />
             <Route path="/n/:codigo" element={<NfcRedirect />} />
+            <Route path="/r/:id" element={<RelatorioPublico />} />
+            <Route path="/avaliar/:id" element={<AvaliacaoPublica />} />
 
             {/* Login */}
             <Route path="/login" element={<Login />} />

@@ -1,13 +1,31 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Store, X, Search, Phone, MapPin, ExternalLink, Loader2, Sparkles, Copy, Check } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Store,
+  X,
+  Search,
+  Phone,
+  MapPin,
+  ExternalLink,
+  Loader2,
+  Sparkles,
+  Copy,
+  Check,
+  BarChart3,
+  ShieldCheck,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
 import GoogleReviewGeneratorModal from '@/components/GoogleReviewGeneratorModal';
+import RelatorioModal from '@/components/RelatorioModal';
 
 const emptyForm = {
   nome: '', link_google: '', telefone: '', endereco: '', ativo: true,
-  tipo_negocio: '', descricao: '', cardapio: '', cor_marca: '', whatsapp: '', instagram: '', site_com_admin: false,
+  tipo_negocio: '', descricao: '', cardapio: '', cor_marca: '', whatsapp: '', instagram: '',
+  site_com_admin: false, filtro_estrelas_ativo: false,
 };
 
 function gerarPromptSite(e: Estabelecimento): string {
@@ -43,6 +61,7 @@ export default function Estabelecimentos() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showLinkGenerator, setShowLinkGenerator] = useState(false);
+  const [reportEst, setReportEst] = useState<Estabelecimento | null>(null);
   const [editing, setEditing] = useState<Estabelecimento | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -92,6 +111,7 @@ export default function Estabelecimentos() {
       tipo_negocio: e.tipo_negocio ?? '', descricao: e.descricao ?? '', cardapio: e.cardapio ?? '',
       cor_marca: e.cor_marca ?? '', whatsapp: e.whatsapp ?? '', instagram: e.instagram ?? '',
       site_com_admin: e.site_com_admin ?? false,
+      filtro_estrelas_ativo: e.filtro_estrelas_ativo ?? false,
     });
     setError(null);
     setShowModal(true);
@@ -102,17 +122,38 @@ export default function Estabelecimentos() {
     setSaving(true);
     setError(null);
 
-    if (editing) {
-      const { error } = await supabase.from('estabelecimentos').update(form).eq('id', editing.id);
-      if (error) { setError(error.message); setSaving(false); return; }
-    } else {
-      const { error } = await supabase.from('estabelecimentos').insert(form);
-      if (error) { setError(error.message); setSaving(false); return; }
-    }
+    try {
+      if (editing) {
+        const { error } = await supabase.from('estabelecimentos').update(form).eq('id', editing.id);
+        if (error) {
+          if (error.message.includes('filtro_estrelas_ativo')) {
+            const { filtro_estrelas_ativo, ...fallbackForm } = form;
+            const { error: retryErr } = await supabase.from('estabelecimentos').update(fallbackForm).eq('id', editing.id);
+            if (retryErr) { setError(retryErr.message); setSaving(false); return; }
+          } else {
+            setError(error.message); setSaving(false); return;
+          }
+        }
+      } else {
+        const { error } = await supabase.from('estabelecimentos').insert(form);
+        if (error) {
+          if (error.message.includes('filtro_estrelas_ativo')) {
+            const { filtro_estrelas_ativo, ...fallbackForm } = form;
+            const { error: retryErr } = await supabase.from('estabelecimentos').insert(fallbackForm);
+            if (retryErr) { setError(retryErr.message); setSaving(false); return; }
+          } else {
+            setError(error.message); setSaving(false); return;
+          }
+        }
+      }
 
-    setShowModal(false);
-    setSaving(false);
-    load();
+      setShowModal(false);
+      setSaving(false);
+      load();
+    } catch (err: any) {
+      setError(err?.message || 'Falha ao salvar');
+      setSaving(false);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -217,7 +258,18 @@ export default function Estabelecimentos() {
                 {filtered.map((e) => (
                   <tr key={e.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900">{e.nome}</div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="font-medium text-slate-900">{e.nome}</div>
+                        {e.filtro_estrelas_ativo && (
+                          <span
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800"
+                            title="Escudo de Reputação 5 Estrelas Ativo"
+                          >
+                            <ShieldCheck size={11} className="text-amber-600" />
+                            Escudo 5★
+                          </span>
+                        )}
+                      </div>
                       <a href={e.link_google} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 hover:underline flex items-center gap-1 mt-0.5">
                         Link do Google <ExternalLink size={11} />
                       </a>
@@ -232,6 +284,13 @@ export default function Estabelecimentos() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setReportEst(e)}
+                          title="Relatório de Desempenho (WhatsApp & Web)"
+                          className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <BarChart3 size={16} />
+                        </button>
                         <button onClick={() => openPrompt(e)} title="Gerar prompt do site" className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
                           <Sparkles size={16} />
                         </button>
@@ -255,7 +314,15 @@ export default function Estabelecimentos() {
               <div key={e.id} className="card p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <h3 className="font-semibold text-slate-900">{e.nome}</h3>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-semibold text-slate-900">{e.nome}</h3>
+                      {e.filtro_estrelas_ativo && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                          <ShieldCheck size={11} className="text-amber-600" />
+                          Escudo 5★
+                        </span>
+                      )}
+                    </div>
                     <a href={e.link_google} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 flex items-center gap-1 mt-0.5">
                       Link do Google <ExternalLink size={11} />
                     </a>
@@ -268,9 +335,18 @@ export default function Estabelecimentos() {
                 {e.telefone && <p className="text-sm text-slate-500 flex items-center gap-1.5 mb-1"><Phone size={13} /> {e.telefone}</p>}
                 {e.endereco && <p className="text-sm text-slate-500 flex items-center gap-1.5"><MapPin size={13} /> {e.endereco}</p>}
                 <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                  <button onClick={() => openPrompt(e)} className="btn-secondary flex-1 text-xs"><Sparkles size={14} /> Prompt do site</button>
-                  <button onClick={() => openEdit(e)} className="btn-secondary flex-1 text-xs"><Pencil size={14} /> Editar</button>
-                  <button onClick={() => handleDelete(e.id)} className="btn-secondary text-red-500 text-xs"><Trash2 size={14} /></button>
+                  <button onClick={() => setReportEst(e)} className="btn-secondary flex-1 text-xs">
+                    <BarChart3 size={14} className="text-emerald-600" /> Relatório
+                  </button>
+                  <button onClick={() => openPrompt(e)} className="btn-secondary flex-1 text-xs">
+                    <Sparkles size={14} /> Prompt
+                  </button>
+                  <button onClick={() => openEdit(e)} className="btn-secondary flex-1 text-xs">
+                    <Pencil size={14} /> Editar
+                  </button>
+                  <button onClick={() => handleDelete(e.id)} className="btn-secondary text-red-500 text-xs">
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -338,6 +414,25 @@ export default function Estabelecimentos() {
                 <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200" />
                 <span className="text-sm font-medium text-slate-700">Estabelecimento ativo</span>
               </label>
+
+              {/* Escudo de Reputação (Filtro 5 Estrelas) */}
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-slate-800 space-y-1.5 animate-fade-in">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.filtro_estrelas_ativo}
+                    onChange={(e) => setForm({ ...form, filtro_estrelas_ativo: e.target.checked })}
+                    className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-200"
+                  />
+                  <span className="text-sm font-bold text-amber-950 flex items-center gap-1.5">
+                    <ShieldCheck size={16} className="text-amber-600" />
+                    Escudo de Reputação (Filtro 5 Estrelas)
+                  </span>
+                </label>
+                <p className="text-xs text-amber-900/80 leading-relaxed pl-6">
+                  Se ativado, clientes que avaliarem de <strong>1 a 3 estrelas</strong> são direcionados para o WhatsApp da gerência em vez de avaliar no Google, blindando a nota do cliente.
+                </p>
+              </div>
 
               <details className="pt-1">
                 <summary className="text-sm font-semibold text-slate-700 cursor-pointer flex items-center gap-1.5">
@@ -435,6 +530,13 @@ export default function Estabelecimentos() {
           setForm((prev) => ({ ...prev, link_google: link }));
           setShowLinkGenerator(false);
         }}
+      />
+
+      {/* Relatório de Desempenho (WhatsApp & Web) */}
+      <RelatorioModal
+        isOpen={!!reportEst}
+        onClose={() => setReportEst(null)}
+        estabelecimento={reportEst}
       />
     </div>
   );

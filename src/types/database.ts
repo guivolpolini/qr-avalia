@@ -12,6 +12,7 @@ export interface Estabelecimento {
   whatsapp: string;
   instagram: string;
   site_com_admin: boolean;
+  filtro_estrelas_ativo?: boolean;
   created_at: string;
   updated_at: string;
 }

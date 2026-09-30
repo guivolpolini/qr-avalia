@@ -52,7 +52,8 @@ export default function QrRedirect() {
       }
 
       setState('redirecting');
-      window.location.replace(link);
+      const targetUrl = link.startsWith('/') ? window.location.origin + link : link;
+      window.location.replace(targetUrl);
     } catch (err: any) {
       console.warn(`Tentativa ${attempt} de resolver QR Code falhou:`, err);
       // Se ainda não esgotou as 3 tentativas automáticas, tenta de novo
