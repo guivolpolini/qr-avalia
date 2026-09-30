@@ -52,7 +52,7 @@ BEGIN
   END IF;
 
   IF v_est.filtro_estrelas_ativo = true THEN
-    RETURN '/avaliar/' || v_est.id;
+    RETURN 'https://qr-avalia.vercel.app/avaliar/' || v_est.id;
   END IF;
 
   RETURN v_est.link_google;
@@ -100,7 +100,7 @@ BEGIN
   END IF;
 
   IF v_est.filtro_estrelas_ativo = true THEN
-    RETURN '/avaliar/' || v_est.id;
+    RETURN 'https://qr-avalia.vercel.app/avaliar/' || v_est.id;
   END IF;
 
   RETURN v_est.link_google;
