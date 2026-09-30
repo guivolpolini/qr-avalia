@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Nfc, Loader2, AlertTriangle, ExternalLink, WifiOff, RefreshCw } from 'lucide-react';
+import { Nfc, Loader2, AlertTriangle, ExternalLink, WifiOff, RefreshCw, Sparkles, MessageCircle, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type State = 'loading' | 'redirecting' | 'network_error' | 'not_found';
@@ -193,34 +193,45 @@ export default function NfcRedirect() {
     );
   }
 
-  // not_found (realmente não cadastrado ou inativo)
+  // not_found (realmente não cadastrado ou em estoque)
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-6">
-      <div className="text-center max-w-sm animate-fade-in">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100 text-slate-500 mb-6 border border-slate-200">
-          <AlertTriangle size={32} />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 p-6">
+      <div className="text-center max-w-sm w-full animate-fade-in">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-brand-50 border border-brand-100 text-brand-600 mb-5 shadow-xs">
+          <Sparkles size={32} className="text-brand-600" />
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Tag NFC em Configuração</h1>
-        <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-          Esta Tag NFC ainda não foi vinculada a um estabelecimento ou está temporariamente desativada.
+
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Placa em Implantação</h1>
+        <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+          Esta placa inteligente está sendo preparada para receber avaliações deste estabelecimento. Em breve você poderá compartilhar sua experiência no Google aqui!
         </p>
-        <div className="p-4 rounded-xl bg-white border border-slate-200 text-left shadow-xs">
-          <p className="text-xs text-slate-400 mb-1">Código consultado</p>
+
+        <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 text-center shadow-xs mb-6">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Identificador da Placa</p>
           <p className="font-mono font-bold text-slate-800 text-base">{codigo ?? '—'}</p>
         </div>
 
-        <div className="mt-6">
+        <div>
           <a
-            href="/dashboard"
-            className="block w-full py-3 px-4 rounded-xl bg-brand-600 text-white text-sm font-bold shadow-xs hover:bg-brand-700 active:scale-95 transition-all text-center"
+            href={`https://wa.me/5514997424040?text=${encodeURIComponent(`Olá! Estou com a placa ${codigo} do QR Avalia e gostaria de mais informações.`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-2xl bg-emerald-600 text-white text-sm font-bold shadow-md shadow-emerald-600/20 hover:bg-emerald-700 active:scale-95 transition-all text-center"
           >
-            ← Voltar para o Painel
+            <MessageCircle size={18} />
+            <span>Falar com Suporte (WhatsApp)</span>
           </a>
         </div>
 
-        <p className="text-xs text-slate-400 mt-6">
-          Se você é o proprietário desta tag, vincule-a pelo painel administrativo do QR Avalia.
-        </p>
+        <div className="mt-8 pt-4 border-t border-slate-200/60">
+          <a
+            href={`/dashboard`}
+            className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <Lock size={12} />
+            <span>Acesso Técnico / Administrador</span>
+          </a>
+        </div>
       </div>
     </div>
   );
