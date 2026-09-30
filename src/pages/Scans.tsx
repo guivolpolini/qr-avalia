@@ -41,6 +41,7 @@ interface EstOption {
 interface ScanMetrics {
   totalHoje: number;
   total7Dias: number;
+  totalMes: number;
   totalGeral: number;
   totalQr: number;
   totalNfc: number;
@@ -60,6 +61,7 @@ export default function Scans() {
   const [metrics, setMetrics] = useState<ScanMetrics>({
     totalHoje: 0,
     total7Dias: 0,
+    totalMes: 0,
     totalGeral: 0,
     totalQr: 0,
     totalNfc: 0,
@@ -71,11 +73,16 @@ export default function Scans() {
   const [total, setTotal] = useState(0);
   const perPage = 25;
 
-  // Carrega métricas globais e lista de estabelecimentos
-  const loadMetricsAndEsts = useCallback(async () => {
+  // Carrega métricas globais ou por estabelecimento e lista de estabelecimentos
+  const loadMetricsAndEsts = useCallback(async (estId?: string) => {
     try {
+      let scansQuery = supabase.from('scans').select('id, tipo, created_at, estabelecimento_id, estabelecimento:estabelecimento_id(nome)');
+      if (estId) {
+        scansQuery = scansQuery.eq('estabelecimento_id', estId);
+      }
+
       const [scansRes, estsRes] = await Promise.all([
-        supabase.from('scans').select('id, tipo, created_at, estabelecimento_id, estabelecimento:estabelecimento_id(nome)'),
+        scansQuery,
         supabase.from('estabelecimentos').select('id, nome').order('nome'),
       ]);
 
@@ -88,9 +95,11 @@ export default function Scans() {
         const now = new Date();
         const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const start7Days = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+        const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
         let hoje = 0;
         let d7 = 0;
+        let mes = 0;
         let qr = 0;
         let nfc = 0;
         const clientCountMap: Record<string, number> = {};
@@ -99,6 +108,7 @@ export default function Scans() {
           const t = new Date(s.created_at).getTime();
           if (t >= startToday) hoje++;
           if (t >= start7Days) d7++;
+          if (t >= startMonth) mes++;
           if (s.tipo === 'qr') qr++;
           if (s.tipo === 'nfc') nfc++;
 
@@ -118,6 +128,7 @@ export default function Scans() {
         setMetrics({
           totalHoje: hoje,
           total7Dias: d7,
+          totalMes: mes,
           totalGeral,
           totalQr: qr,
           totalNfc: nfc,
@@ -132,8 +143,8 @@ export default function Scans() {
   }, []);
 
   useEffect(() => {
-    loadMetricsAndEsts();
-  }, [loadMetricsAndEsts]);
+    loadMetricsAndEsts(selectedEst);
+  }, [loadMetricsAndEsts, selectedEst]);
 
   // Carrega listagem paginada com filtros
   const load = useCallback(async () => {
@@ -203,6 +214,7 @@ export default function Scans() {
   });
 
   const totalPages = Math.ceil(total / perPage);
+  const selectedEstNome = estabelecimentos.find((e) => e.id === selectedEst)?.nome;
 
   function formatDate(iso: string) {
     const d = new Date(iso);
@@ -257,8 +269,16 @@ export default function Scans() {
           <p className="text-sm text-slate-500 mt-1">Métricas em tempo real de leituras de QR Codes e Tags NFC</p>
         </div>
         <div className="text-left sm:text-right bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-          <p className="text-2xl font-extrabold text-slate-900">{metrics.totalGeral}</p>
-          <p className="text-xs text-slate-400 font-medium">Scans acumulados no sistema</p>
+          <p className="text-2xl font-extrabold text-slate-900">{total}</p>
+          <p className="text-xs text-slate-500 font-medium">
+            {periodoFilter === 'hoje'
+              ? '🔥 Scans hoje'
+              : periodoFilter === '7dias'
+              ? '📈 Scans em 7 dias'
+              : periodoFilter === 'mes'
+              ? '🗓️ Scans neste mês'
+              : 'Scans totais registrados'}
+          </p>
         </div>
       </div>
 
@@ -374,42 +394,70 @@ export default function Scans() {
       {/* Barra de Filtros: Período e Tipo de Tecnologia */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
         {/* 3. Tópico 3: Filtro por Período */}
-        <div className="inline-flex items-center gap-1 bg-slate-100/90 border border-slate-200/80 p-1 rounded-xl text-xs flex-wrap">
+        <div className="inline-flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 p-1 rounded-xl text-xs flex-wrap">
           <span className="text-[10px] font-bold text-slate-400 uppercase px-2 flex items-center gap-1">
             <Calendar size={12} />
             Período:
           </span>
           <button
             onClick={() => setPeriodoFilter('todos')}
-            className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-colors ${
               periodoFilter === 'todos' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            Todos
+            <span>Todos</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                periodoFilter === 'todos' ? 'bg-slate-100 text-slate-700' : 'bg-slate-200/70 text-slate-600'
+              }`}
+            >
+              {metrics.totalGeral}
+            </span>
           </button>
           <button
             onClick={() => setPeriodoFilter('hoje')}
-            className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-colors ${
               periodoFilter === 'hoje' ? 'bg-amber-600 text-white shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            Hoje
+            <span>Hoje</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                periodoFilter === 'hoje' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              {metrics.totalHoje}
+            </span>
           </button>
           <button
             onClick={() => setPeriodoFilter('7dias')}
-            className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-colors ${
               periodoFilter === '7dias' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            7 Dias
+            <span>7 Dias</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                periodoFilter === '7dias' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'
+              }`}
+            >
+              {metrics.total7Dias}
+            </span>
           </button>
           <button
             onClick={() => setPeriodoFilter('mes')}
-            className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-colors ${
               periodoFilter === 'mes' ? 'bg-purple-600 text-white shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            Este Mês
+            <span>Este Mês</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                periodoFilter === 'mes' ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-800'
+              }`}
+            >
+              {metrics.totalMes}
+            </span>
           </button>
         </div>
 
@@ -428,6 +476,100 @@ export default function Scans() {
               {t === 'todos' ? 'Todos' : t === 'qr' ? 'QR Code' : 'NFC'}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Banner de Status e Contagem Dinâmica do Período */}
+      <div
+        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3 rounded-2xl border mb-5 text-sm transition-all shadow-xs ${
+          periodoFilter === 'hoje'
+            ? 'bg-amber-50/90 border-amber-200/90 text-amber-950'
+            : periodoFilter === '7dias'
+            ? 'bg-blue-50/90 border-blue-200/90 text-blue-950'
+            : periodoFilter === 'mes'
+            ? 'bg-purple-50/90 border-purple-200/90 text-purple-950'
+            : 'bg-slate-50 border-slate-200/90 text-slate-800'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-3 w-3 relative flex-shrink-0">
+            {periodoFilter === 'hoje' && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            )}
+            <span
+              className={`relative inline-flex rounded-full h-3 w-3 ${
+                periodoFilter === 'hoje'
+                  ? 'bg-amber-500'
+                  : periodoFilter === '7dias'
+                  ? 'bg-blue-500'
+                  : periodoFilter === 'mes'
+                  ? 'bg-purple-500'
+                  : 'bg-slate-400'
+              }`}
+            ></span>
+          </span>
+          <div>
+            <span className="font-semibold text-slate-900">
+              {periodoFilter === 'hoje' && (
+                <>
+                  Hoje teve{' '}
+                  <span className="text-base font-black text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-lg border border-amber-300/60">
+                    {total}
+                  </span>{' '}
+                  {total === 1 ? 'scan registrado' : 'scans registrados'}
+                </>
+              )}
+              {periodoFilter === '7dias' && (
+                <>
+                  Últimos 7 dias tiveram{' '}
+                  <span className="text-base font-black text-blue-900 bg-blue-100/90 px-2 py-0.5 rounded-lg border border-blue-300/60">
+                    {total}
+                  </span>{' '}
+                  {total === 1 ? 'scan registrado' : 'scans registrados'}
+                </>
+              )}
+              {periodoFilter === 'mes' && (
+                <>
+                  Este mês teve{' '}
+                  <span className="text-base font-black text-purple-900 bg-purple-100/90 px-2 py-0.5 rounded-lg border border-purple-300/60">
+                    {total}
+                  </span>{' '}
+                  {total === 1 ? 'scan registrado' : 'scans registrados'}
+                </>
+              )}
+              {periodoFilter === 'todos' && (
+                <>
+                  Total acumulado:{' '}
+                  <span className="text-base font-black text-slate-900 bg-white px-2 py-0.5 rounded-lg border border-slate-300/60">
+                    {total}
+                  </span>{' '}
+                  {total === 1 ? 'scan registrado' : 'scans registrados'}
+                </>
+              )}
+            </span>
+            {selectedEstNome ? (
+              <span className="text-xs text-slate-600 block sm:inline sm:ml-1.5 font-medium">
+                — Estabelecimento:{' '}
+                <strong className="text-slate-900 font-bold underline decoration-slate-300">
+                  {selectedEstNome}
+                </strong>
+              </span>
+            ) : (
+              <span className="text-xs text-slate-500 block sm:inline sm:ml-1.5 font-medium">
+                — em todos os clientes
+              </span>
+            )}
+            {tipoFilter !== 'todos' && (
+              <span className="inline-block text-[11px] uppercase font-bold px-1.5 py-0.5 ml-1.5 rounded bg-slate-200/80 text-slate-800">
+                via {tipoFilter.toUpperCase()}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="text-xs text-slate-500 font-medium sm:text-right shrink-0">
+          {filtered.length} {filtered.length === 1 ? 'item exibido' : 'itens exibidos'}{' '}
+          {totalPages > 1 && `(Pág ${page + 1}/${totalPages})`}
         </div>
       </div>
 
