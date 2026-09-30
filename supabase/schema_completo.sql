@@ -1004,3 +1004,15 @@ GRANT EXECUTE ON FUNCTION get_relatorio_publico(uuid, integer) TO anon, authenti
 ALTER TABLE estabelecimentos
   ADD COLUMN IF NOT EXISTS email_notificacao text DEFAULT '';
 
+
+-- ==========================================
+-- MIGRATION: 20260930143000_add_canal_queixas.sql
+-- ==========================================
+
+/*
+# Migração: Campo canal_queixas para preferência de recebimento do lojista
+*/
+
+ALTER TABLE estabelecimentos
+  ADD COLUMN IF NOT EXISTS canal_queixas text DEFAULT 'ambos';
+

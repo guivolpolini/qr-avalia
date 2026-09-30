@@ -26,6 +26,7 @@ const emptyForm = {
   nome: '', link_google: '', telefone: '', endereco: '', ativo: true,
   tipo_negocio: '', descricao: '', cardapio: '', cor_marca: '', whatsapp: '', instagram: '',
   site_com_admin: false, filtro_estrelas_ativo: false, email_notificacao: '',
+  canal_queixas: 'ambos' as 'ambos' | 'email' | 'whatsapp',
 };
 
 function gerarPromptSite(e: Estabelecimento): string {
@@ -113,6 +114,7 @@ export default function Estabelecimentos() {
       site_com_admin: e.site_com_admin ?? false,
       filtro_estrelas_ativo: e.filtro_estrelas_ativo ?? false,
       email_notificacao: e.email_notificacao ?? '',
+      canal_queixas: (e.canal_queixas as 'ambos' | 'email' | 'whatsapp') ?? 'ambos',
     });
     setError(null);
     setShowModal(true);
@@ -127,8 +129,12 @@ export default function Estabelecimentos() {
       if (editing) {
         const { error } = await supabase.from('estabelecimentos').update(form).eq('id', editing.id);
         if (error) {
-          if (error.message.includes('filtro_estrelas_ativo') || error.message.includes('email_notificacao')) {
-            const { filtro_estrelas_ativo, email_notificacao, ...fallbackForm } = form;
+          if (
+            error.message.includes('filtro_estrelas_ativo') ||
+            error.message.includes('email_notificacao') ||
+            error.message.includes('canal_queixas')
+          ) {
+            const { filtro_estrelas_ativo, email_notificacao, canal_queixas, ...fallbackForm } = form;
             const { error: retryErr } = await supabase.from('estabelecimentos').update(fallbackForm).eq('id', editing.id);
             if (retryErr) { setError(retryErr.message); setSaving(false); return; }
           } else {
@@ -138,8 +144,12 @@ export default function Estabelecimentos() {
       } else {
         const { error } = await supabase.from('estabelecimentos').insert(form);
         if (error) {
-          if (error.message.includes('filtro_estrelas_ativo') || error.message.includes('email_notificacao')) {
-            const { filtro_estrelas_ativo, email_notificacao, ...fallbackForm } = form;
+          if (
+            error.message.includes('filtro_estrelas_ativo') ||
+            error.message.includes('email_notificacao') ||
+            error.message.includes('canal_queixas')
+          ) {
+            const { filtro_estrelas_ativo, email_notificacao, canal_queixas, ...fallbackForm } = form;
             const { error: retryErr } = await supabase.from('estabelecimentos').insert(fallbackForm);
             if (retryErr) { setError(retryErr.message); setSaving(false); return; }
           } else {
@@ -435,20 +445,91 @@ export default function Estabelecimentos() {
                 </p>
 
                 {form.filtro_estrelas_ativo && (
-                  <div className="pt-2 border-t border-amber-200/80 space-y-1.5 pl-6">
-                    <label className="text-xs font-bold text-amber-950 block">
-                      E-mail da Gerência para Receber Queixas (Opcional)
-                    </label>
-                    <input
-                      type="email"
-                      value={form.email_notificacao}
-                      onChange={(e) => setForm({ ...form, email_notificacao: e.target.value })}
-                      className="input text-xs bg-white"
-                      placeholder="gerencia@empresa.com"
-                    />
-                    <span className="text-[11px] text-amber-800/80 block">
-                      O cliente insatisfeito poderá escolher entre falar no WhatsApp ou enviar direto para este e-mail.
-                    </span>
+                  <div className="pt-2 border-t border-amber-200/80 space-y-3 pl-6">
+                    <div>
+                      <label className="text-xs font-bold text-amber-950 block mb-1.5">
+                        Onde o lojista prefere receber as queixas?
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <label
+                          className={`p-2 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                            form.canal_queixas === 'ambos'
+                              ? 'bg-amber-100 border-amber-400 text-amber-950 shadow-xs'
+                              : 'bg-white border-amber-200 text-slate-600 hover:bg-amber-50/50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="canal_queixas"
+                            value="ambos"
+                            checked={form.canal_queixas === 'ambos'}
+                            onChange={() => setForm({ ...form, canal_queixas: 'ambos' })}
+                            className="sr-only"
+                          />
+                          <span>🟢 Ambos</span>
+                          <span className="text-[10px] font-normal text-slate-500 mt-0.5">Zap ou E-mail</span>
+                        </label>
+
+                        <label
+                          className={`p-2 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                            form.canal_queixas === 'email'
+                              ? 'bg-amber-100 border-amber-400 text-amber-950 shadow-xs'
+                              : 'bg-white border-amber-200 text-slate-600 hover:bg-amber-50/50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="canal_queixas"
+                            value="email"
+                            checked={form.canal_queixas === 'email'}
+                            onChange={() => setForm({ ...form, canal_queixas: 'email' })}
+                            className="sr-only"
+                          />
+                          <span>✉️ Só E-mail</span>
+                          <span className="text-[10px] font-normal text-slate-500 mt-0.5">Preserva celular</span>
+                        </label>
+
+                        <label
+                          className={`p-2 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                            form.canal_queixas === 'whatsapp'
+                              ? 'bg-amber-100 border-amber-400 text-amber-950 shadow-xs'
+                              : 'bg-white border-amber-200 text-slate-600 hover:bg-amber-50/50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="canal_queixas"
+                            value="whatsapp"
+                            checked={form.canal_queixas === 'whatsapp'}
+                            onChange={() => setForm({ ...form, canal_queixas: 'whatsapp' })}
+                            className="sr-only"
+                          />
+                          <span>📲 Só WhatsApp</span>
+                          <span className="text-[10px] font-normal text-slate-500 mt-0.5">Mais rápido</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {(form.canal_queixas === 'ambos' || form.canal_queixas === 'email') && (
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-amber-950 block">
+                          E-mail da Gerência para Receber Queixas
+                        </label>
+                        <input
+                          type="email"
+                          required={form.canal_queixas === 'email'}
+                          value={form.email_notificacao}
+                          onChange={(e) => setForm({ ...form, email_notificacao: e.target.value })}
+                          className="input text-xs bg-white"
+                          placeholder="gerencia@empresa.com"
+                        />
+                        <span className="text-[11px] text-amber-800/80 block">
+                          {form.canal_queixas === 'email'
+                            ? 'O botão do WhatsApp será ocultado. O cliente só poderá enviar por e-mail, preservando seu celular.'
+                            : 'O cliente poderá escolher entre falar no WhatsApp ou enviar direto para este e-mail.'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

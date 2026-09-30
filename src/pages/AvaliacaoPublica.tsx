@@ -303,24 +303,30 @@ export default function AvaliacaoPublica() {
                   </div>
                 </div>
 
-                {/* Opções de Envio: WhatsApp e/ou E-mail */}
+                {/* Opções de Envio: WhatsApp e/ou E-mail conforme preferência do lojista */}
                 <div className="space-y-2 pt-2">
-                  <a
-                    href={zapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-primary w-full py-3.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20 active:scale-95 transition-all text-white"
-                  >
-                    <Send size={15} />
-                    <span>Enviar no WhatsApp da Gerência</span>
-                  </a>
+                  {estabelecimento.canal_queixas !== 'email' && (
+                    <a
+                      href={zapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-primary w-full py-3.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20 active:scale-95 transition-all text-white"
+                    >
+                      <Send size={15} />
+                      <span>Enviar no WhatsApp da Gerência</span>
+                    </a>
+                  )}
 
-                  {estabelecimento.email_notificacao && (
+                  {estabelecimento.canal_queixas !== 'whatsapp' && (
                     <button
                       type="button"
                       onClick={handleSendEmail}
-                      disabled={sendingEmail}
-                      className="btn-secondary w-full py-3 text-xs font-bold flex items-center justify-center gap-2 border-slate-300 hover:border-slate-400 active:scale-95 transition-all cursor-pointer"
+                      disabled={sendingEmail || !feedbackText.trim()}
+                      className={`w-full py-3.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 rounded-xl transition-all cursor-pointer ${
+                        estabelecimento.canal_queixas === 'email'
+                          ? 'btn-primary bg-slate-900 hover:bg-slate-800 text-white shadow-md active:scale-95'
+                          : 'btn-secondary border-slate-300 hover:border-slate-400 active:scale-95'
+                      }`}
                     >
                       {sendingEmail ? (
                         <Loader2 size={15} className="animate-spin text-brand-600" />

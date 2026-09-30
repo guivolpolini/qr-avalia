@@ -14,6 +14,7 @@ export interface Estabelecimento {
   site_com_admin: boolean;
   filtro_estrelas_ativo?: boolean;
   email_notificacao?: string;
+  canal_queixas?: 'ambos' | 'email' | 'whatsapp';
   created_at: string;
   updated_at: string;
 }
