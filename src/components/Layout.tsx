@@ -31,14 +31,39 @@ const PAGE_TITLES: Record<string, string> = {
 
 const ActivatePlacaModal = lazy(() => import('@/components/ActivatePlacaModal'));
 
-const desktopNavItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/estabelecimentos', label: 'Estabelecimentos', icon: Store },
-  { to: '/placas', label: 'Placas', icon: QrCode },
-  { to: '/scans', label: 'Scans', icon: ScanLine },
-  { to: '/google-seo', label: 'Google / SEO', icon: Search },
-  { to: '/prospeccao', label: 'Prospecção', icon: Target },
-  { to: '/configuracoes', label: 'Configurações', icon: Settings },
+interface NavSection {
+  title: string;
+  items: { to: string; label: string; icon: any }[];
+}
+
+const navSections: NavSection[] = [
+  {
+    title: 'Operação',
+    items: [
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/estabelecimentos', label: 'Clientes', icon: Store },
+      { to: '/placas', label: 'Placas & Estoque', icon: QrCode },
+    ],
+  },
+  {
+    title: 'Métricas & Dados',
+    items: [
+      { to: '/scans', label: 'Histórico de Scans', icon: ScanLine },
+    ],
+  },
+  {
+    title: 'Crescimento & Vendas',
+    items: [
+      { to: '/prospeccao', label: 'Prospecção Local', icon: Target },
+      { to: '/google-seo', label: 'Google & SEO Local', icon: Search },
+    ],
+  },
+  {
+    title: 'Sistema',
+    items: [
+      { to: '/configuracoes', label: 'Configurações', icon: Settings },
+    ],
+  },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -102,22 +127,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {desktopNavItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-brand-50 text-brand-700 font-semibold'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`
-              }
-            >
-              <item.icon size={18} />
-              {item.label}
-            </NavLink>
+        <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+          {navSections.map((sec, secIdx) => (
+            <div key={sec.title}>
+              <p className={`text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5 ${secIdx > 0 ? 'mt-2' : ''}`}>
+                {sec.title}
+              </p>
+              <div className="space-y-1">
+                {sec.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-brand-50 text-brand-700 font-semibold'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`
+                    }
+                  >
+                    <item.icon size={17} />
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
@@ -303,74 +337,92 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </button>
             </div>
 
-            <div className="space-y-1">
-              <NavLink
-                to="/scans"
-                onClick={() => setShowMoreMenu(false)}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                    <ScanLine size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Histórico de Scans</p>
-                    <p className="text-xs text-slate-400">Logs detalhados de leituras</p>
-                  </div>
+            <div className="space-y-3">
+              {/* Seção Métricas & Dados */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1">Métricas & Dados</p>
+                <div className="space-y-1">
+                  <NavLink
+                    to="/scans"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <ScanLine size={17} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">Histórico de Scans</p>
+                        <p className="text-[11px] text-slate-400">Logs detalhados de leituras</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-slate-400" />
+                  </NavLink>
                 </div>
-                <ChevronRight size={16} className="text-slate-400" />
-              </NavLink>
+              </div>
 
-              <NavLink
-                to="/google-seo"
-                onClick={() => setShowMoreMenu(false)}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <Search size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Google / SEO Local</p>
-                    <p className="text-xs text-slate-400">Checklist e reputação de clientes</p>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-slate-400" />
-              </NavLink>
+              {/* Seção Crescimento & Vendas */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1">Crescimento & Vendas</p>
+                <div className="space-y-1">
+                  <NavLink
+                    to="/prospeccao"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <Target size={17} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">Prospecção Local</p>
+                        <p className="text-[11px] text-slate-400">Busca de leads e novos clientes</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-slate-400" />
+                  </NavLink>
 
-              <NavLink
-                to="/prospeccao"
-                onClick={() => setShowMoreMenu(false)}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <Target size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Prospecção Local</p>
-                    <p className="text-xs text-slate-400">Busca de leads e novos clientes</p>
-                  </div>
+                  <NavLink
+                    to="/google-seo"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <Search size={17} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">Google & SEO Local</p>
+                        <p className="text-[11px] text-slate-400">Checklist e reputação de clientes</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-slate-400" />
+                  </NavLink>
                 </div>
-                <ChevronRight size={16} className="text-slate-400" />
-              </NavLink>
+              </div>
 
-              <NavLink
-                to="/configuracoes"
-                onClick={() => setShowMoreMenu(false)}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-                    <Settings size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Configurações</p>
-                    <p className="text-xs text-slate-400">Senha e dados da conta</p>
-                  </div>
+              {/* Seção Sistema */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1">Sistema</p>
+                <div className="space-y-1">
+                  <NavLink
+                    to="/configuracoes"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                        <Settings size={17} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">Configurações</p>
+                        <p className="text-[11px] text-slate-400">Senha e dados da conta</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-slate-400" />
+                  </NavLink>
                 </div>
-                <ChevronRight size={16} className="text-slate-400" />
-              </NavLink>
+              </div>
             </div>
 
             <div className="pt-2 border-t border-slate-100">

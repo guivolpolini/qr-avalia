@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Plus,
   Pencil,
@@ -16,6 +16,9 @@ import {
   Check,
   BarChart3,
   ShieldCheck,
+  QrCode as QrIcon,
+  ScanLine,
+  Zap,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
@@ -57,8 +60,16 @@ function gerarPromptSite(e: Estabelecimento): string {
   return l.join('\n');
 }
 
+interface EstStats {
+  qrCodes: string[];
+  nfcTags: string[];
+  totalPlacas: number;
+  totalScans: number;
+}
+
 export default function Estabelecimentos() {
   const [items, setItems] = useState<Estabelecimento[]>([]);
+  const [stats, setStats] = useState<Record<string, EstStats>>({});
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showLinkGenerator, setShowLinkGenerator] = useState(false);
@@ -78,15 +89,49 @@ export default function Estabelecimentos() {
 
   async function load() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('estabelecimentos')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) {
-      setError(error.message);
+    const [estRes, qrRes, nfcRes, scansRes] = await Promise.all([
+      supabase.from('estabelecimentos').select('*').order('created_at', { ascending: false }),
+      supabase.from('qr_codes').select('id, codigo, estabelecimento_id'),
+      supabase.from('nfc_tags').select('id, codigo, estabelecimento_id'),
+      supabase.from('scans').select('id, estabelecimento_id'),
+    ]);
+
+    if (estRes.error) {
+      setError(estRes.error.message);
     } else {
-      setItems(data ?? []);
+      setItems(estRes.data ?? []);
     }
+
+    const newStats: Record<string, EstStats> = {};
+    (qrRes.data || []).forEach((q) => {
+      if (!q.estabelecimento_id) return;
+      if (!newStats[q.estabelecimento_id]) {
+        newStats[q.estabelecimento_id] = { qrCodes: [], nfcTags: [], totalPlacas: 0, totalScans: 0 };
+      }
+      newStats[q.estabelecimento_id].qrCodes.push(q.codigo);
+    });
+
+    (nfcRes.data || []).forEach((n) => {
+      if (!n.estabelecimento_id) return;
+      if (!newStats[n.estabelecimento_id]) {
+        newStats[n.estabelecimento_id] = { qrCodes: [], nfcTags: [], totalPlacas: 0, totalScans: 0 };
+      }
+      newStats[n.estabelecimento_id].nfcTags.push(n.codigo);
+    });
+
+    (scansRes.data || []).forEach((s) => {
+      if (!s.estabelecimento_id) return;
+      if (!newStats[s.estabelecimento_id]) {
+        newStats[s.estabelecimento_id] = { qrCodes: [], nfcTags: [], totalPlacas: 0, totalScans: 0 };
+      }
+      newStats[s.estabelecimento_id].totalScans += 1;
+    });
+
+    Object.values(newStats).forEach((s) => {
+      s.totalPlacas = s.qrCodes.length + s.nfcTags.length;
+    });
+
+    setStats(newStats);
     setLoading(false);
   }
 
@@ -259,6 +304,7 @@ export default function Estabelecimentos() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50">
                   <th className="text-left font-semibold text-slate-600 px-4 py-3">Nome</th>
+                  <th className="text-left font-semibold text-slate-600 px-4 py-3">Placas & Métricas</th>
                   <th className="text-left font-semibold text-slate-600 px-4 py-3">Telefone</th>
                   <th className="text-left font-semibold text-slate-600 px-4 py-3">Endereço</th>
                   <th className="text-left font-semibold text-slate-600 px-4 py-3">Status</th>
@@ -266,101 +312,200 @@ export default function Estabelecimentos() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((e) => (
-                  <tr key={e.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <div className="font-medium text-slate-900">{e.nome}</div>
-                        {e.filtro_estrelas_ativo && (
-                          <span
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800"
-                            title="Escudo de Reputação 5 Estrelas Ativo"
+                {filtered.map((e) => {
+                  const s = stats[e.id];
+                  const totalPlacas = s?.totalPlacas || 0;
+                  const totalScans = s?.totalScans || 0;
+                  const allCodes = [...(s?.qrCodes || []), ...(s?.nfcTags || [])];
+
+                  return (
+                    <tr key={e.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="font-semibold text-slate-900">{e.nome}</div>
+                          {e.filtro_estrelas_ativo ? (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200/80"
+                              title="Escudo de Reputação 5 Estrelas Ativo (1 a 3★ vai para gerência)"
+                            >
+                              <ShieldCheck size={11} className="text-amber-600" />
+                              Escudo 5★ ({e.canal_queixas === 'email' ? 'E-mail' : e.canal_queixas === 'whatsapp' ? 'Zap' : 'Ambos'})
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600"
+                              title="Redireciona diretamente para o Google Maps"
+                            >
+                              <Zap size={10} className="text-emerald-500" />
+                              Google Direto
+                            </span>
+                          )}
+                        </div>
+                        <a href={e.link_google} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 hover:underline flex items-center gap-1 mt-0.5">
+                          Link do Google <ExternalLink size={11} />
+                        </a>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Link
+                              to={`/placas?search=${encodeURIComponent(e.nome)}`}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold transition-colors ${
+                                totalPlacas > 0
+                                  ? 'bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200/60'
+                                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                              }`}
+                              title={totalPlacas > 0 ? `Ver placas de ${e.nome}` : 'Nenhuma placa associada'}
+                            >
+                              <QrIcon size={12} />
+                              <span>{totalPlacas > 0 ? `${totalPlacas} placa${totalPlacas > 1 ? 's' : ''}` : '0 placas'}</span>
+                            </Link>
+
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60"
+                              title={`${totalScans} leituras registradas`}
+                            >
+                              <ScanLine size={12} />
+                              <span>{totalScans} scans</span>
+                            </span>
+                          </div>
+
+                          {allCodes.length > 0 && (
+                            <div className="text-[11px] font-mono text-slate-400 truncate max-w-[200px]" title={allCodes.join(', ')}>
+                              {allCodes.slice(0, 3).join(', ')}{allCodes.length > 3 ? ` +${allCodes.length - 3}` : ''}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-slate-600">{e.telefone || '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">{e.endereco || '—'}</td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => toggleAtivo(e)} className={e.ativo ? 'badge-green' : 'badge-red'}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${e.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                          {e.ativo ? 'Ativo' : 'Inativo'}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Link
+                            to={`/placas?search=${encodeURIComponent(e.nome)}`}
+                            title="Ver e Gerenciar Placas deste cliente"
+                            className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors cursor-pointer"
                           >
-                            <ShieldCheck size={11} className="text-amber-600" />
-                            Escudo 5★
-                          </span>
-                        )}
-                      </div>
-                      <a href={e.link_google} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 hover:underline flex items-center gap-1 mt-0.5">
-                        Link do Google <ExternalLink size={11} />
-                      </a>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{e.telefone || '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{e.endereco || '—'}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => toggleAtivo(e)} className={e.ativo ? 'badge-green' : 'badge-red'}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${e.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                        {e.ativo ? 'Ativo' : 'Inativo'}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => setReportEst(e)}
-                          title="Relatório de Desempenho (WhatsApp & Web)"
-                          className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <BarChart3 size={16} />
-                        </button>
-                        <button onClick={() => openPrompt(e)} title="Gerar prompt do site" className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
-                          <Sparkles size={16} />
-                        </button>
-                        <button onClick={() => openEdit(e)} className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
-                          <Pencil size={16} />
-                        </button>
-                        <button onClick={() => handleDelete(e.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                            <QrIcon size={16} />
+                          </Link>
+                          <button
+                            onClick={() => setReportEst(e)}
+                            title="Relatório de Desempenho (WhatsApp & Web)"
+                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <BarChart3 size={16} />
+                          </button>
+                          <button onClick={() => openPrompt(e)} title="Gerar prompt do site" className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+                            <Sparkles size={16} />
+                          </button>
+                          <button onClick={() => openEdit(e)} className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+                            <Pencil size={16} />
+                          </button>
+                          <button onClick={() => handleDelete(e.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
-            {filtered.map((e) => (
-              <div key={e.id} className="card p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="font-semibold text-slate-900">{e.nome}</h3>
-                      {e.filtro_estrelas_ativo && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                          <ShieldCheck size={11} className="text-amber-600" />
-                          Escudo 5★
-                        </span>
-                      )}
+            {filtered.map((e) => {
+              const s = stats[e.id];
+              const totalPlacas = s?.totalPlacas || 0;
+              const totalScans = s?.totalScans || 0;
+              const allCodes = [...(s?.qrCodes || []), ...(s?.nfcTags || [])];
+
+              return (
+                <div key={e.id} className="card p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-bold text-slate-900">{e.nome}</h3>
+                        {e.filtro_estrelas_ativo ? (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                            <ShieldCheck size={11} className="text-amber-600" />
+                            Escudo 5★ ({e.canal_queixas === 'email' ? 'E-mail' : e.canal_queixas === 'whatsapp' ? 'Zap' : 'Ambos'})
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
+                            <Zap size={10} className="text-emerald-500" />
+                            Google Direto
+                          </span>
+                        )}
+                      </div>
+                      <a href={e.link_google} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 flex items-center gap-1 mt-0.5">
+                        Link do Google <ExternalLink size={11} />
+                      </a>
                     </div>
-                    <a href={e.link_google} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 flex items-center gap-1 mt-0.5">
-                      Link do Google <ExternalLink size={11} />
-                    </a>
+                    <button onClick={() => toggleAtivo(e)} className={e.ativo ? 'badge-green' : 'badge-red'}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${e.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                      {e.ativo ? 'Ativo' : 'Inativo'}
+                    </button>
                   </div>
-                  <button onClick={() => toggleAtivo(e)} className={e.ativo ? 'badge-green' : 'badge-red'}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${e.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                    {e.ativo ? 'Ativo' : 'Inativo'}
-                  </button>
+
+                  {e.telefone && <p className="text-sm text-slate-500 flex items-center gap-1.5 mb-1"><Phone size={13} /> {e.telefone}</p>}
+                  {e.endereco && <p className="text-sm text-slate-500 flex items-center gap-1.5"><MapPin size={13} /> {e.endereco}</p>}
+
+                  {/* Badges de Placas e Scans no Mobile */}
+                  <div className="flex items-center gap-2 flex-wrap my-2.5 py-2 px-3 bg-slate-50/80 rounded-xl border border-slate-100 text-xs">
+                    <Link
+                      to={`/placas?search=${encodeURIComponent(e.nome)}`}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-xs transition-colors ${
+                        totalPlacas > 0
+                          ? 'bg-brand-50 text-brand-700 border border-brand-200/60'
+                          : 'bg-white text-slate-500 border border-slate-200'
+                      }`}
+                    >
+                      <QrIcon size={13} />
+                      <span>{totalPlacas > 0 ? `${totalPlacas} placa${totalPlacas > 1 ? 's' : ''}` : '0 placas'}</span>
+                    </Link>
+
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-xs bg-amber-50 text-amber-700 border border-amber-200/60">
+                      <ScanLine size={13} />
+                      <span>{totalScans} scans</span>
+                    </span>
+
+                    {allCodes.length > 0 && (
+                      <span className="text-[11px] font-mono text-slate-500 ml-auto truncate max-w-[120px]">
+                        {allCodes.slice(0, 2).join(', ')}{allCodes.length > 2 ? '...' : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                    <Link to={`/placas?search=${encodeURIComponent(e.nome)}`} className="btn-secondary flex-1 text-xs">
+                      <QrIcon size={14} className="text-brand-600" /> Placas
+                    </Link>
+                    <button onClick={() => setReportEst(e)} className="btn-secondary flex-1 text-xs">
+                      <BarChart3 size={14} className="text-emerald-600" /> Relatório
+                    </button>
+                    <button onClick={() => openPrompt(e)} className="btn-secondary flex-1 text-xs">
+                      <Sparkles size={14} /> Prompt
+                    </button>
+                    <button onClick={() => openEdit(e)} className="btn-secondary flex-1 text-xs">
+                      <Pencil size={14} /> Editar
+                    </button>
+                    <button onClick={() => handleDelete(e.id)} className="btn-secondary text-red-500 text-xs">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                {e.telefone && <p className="text-sm text-slate-500 flex items-center gap-1.5 mb-1"><Phone size={13} /> {e.telefone}</p>}
-                {e.endereco && <p className="text-sm text-slate-500 flex items-center gap-1.5"><MapPin size={13} /> {e.endereco}</p>}
-                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                  <button onClick={() => setReportEst(e)} className="btn-secondary flex-1 text-xs">
-                    <BarChart3 size={14} className="text-emerald-600" /> Relatório
-                  </button>
-                  <button onClick={() => openPrompt(e)} className="btn-secondary flex-1 text-xs">
-                    <Sparkles size={14} /> Prompt
-                  </button>
-                  <button onClick={() => openEdit(e)} className="btn-secondary flex-1 text-xs">
-                    <Pencil size={14} /> Editar
-                  </button>
-                  <button onClick={() => handleDelete(e.id)} className="btn-secondary text-red-500 text-xs">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
