@@ -63,6 +63,7 @@ function gerarPromptSite(e: Estabelecimento): string {
 interface EstStats {
   qrCodes: string[];
   nfcTags: string[];
+  plateNumbers: string[];
   totalPlacas: number;
   totalScans: number;
 }
@@ -106,7 +107,7 @@ export default function Estabelecimentos() {
     (qrRes.data || []).forEach((q) => {
       if (!q.estabelecimento_id) return;
       if (!newStats[q.estabelecimento_id]) {
-        newStats[q.estabelecimento_id] = { qrCodes: [], nfcTags: [], totalPlacas: 0, totalScans: 0 };
+        newStats[q.estabelecimento_id] = { qrCodes: [], nfcTags: [], plateNumbers: [], totalPlacas: 0, totalScans: 0 };
       }
       newStats[q.estabelecimento_id].qrCodes.push(q.codigo);
     });
@@ -114,7 +115,7 @@ export default function Estabelecimentos() {
     (nfcRes.data || []).forEach((n) => {
       if (!n.estabelecimento_id) return;
       if (!newStats[n.estabelecimento_id]) {
-        newStats[n.estabelecimento_id] = { qrCodes: [], nfcTags: [], totalPlacas: 0, totalScans: 0 };
+        newStats[n.estabelecimento_id] = { qrCodes: [], nfcTags: [], plateNumbers: [], totalPlacas: 0, totalScans: 0 };
       }
       newStats[n.estabelecimento_id].nfcTags.push(n.codigo);
     });
@@ -122,13 +123,18 @@ export default function Estabelecimentos() {
     (scansRes.data || []).forEach((s) => {
       if (!s.estabelecimento_id) return;
       if (!newStats[s.estabelecimento_id]) {
-        newStats[s.estabelecimento_id] = { qrCodes: [], nfcTags: [], totalPlacas: 0, totalScans: 0 };
+        newStats[s.estabelecimento_id] = { qrCodes: [], nfcTags: [], plateNumbers: [], totalPlacas: 0, totalScans: 0 };
       }
       newStats[s.estabelecimento_id].totalScans += 1;
     });
 
     Object.values(newStats).forEach((s) => {
-      s.totalPlacas = s.qrCodes.length + s.nfcTags.length;
+      // Unifica QR e NFC da mesma placa física pelo número (ex: QR001 + NFC001 = Placa 001)
+      const numSet = new Set<string>();
+      s.qrCodes.forEach((c) => numSet.add(c.replace(/\D/g, '') || c));
+      s.nfcTags.forEach((c) => numSet.add(c.replace(/\D/g, '') || c));
+      s.plateNumbers = Array.from(numSet).sort();
+      s.totalPlacas = s.plateNumbers.length;
     });
 
     setStats(newStats);
@@ -371,9 +377,11 @@ export default function Estabelecimentos() {
                             </span>
                           </div>
 
-                          {allCodes.length > 0 && (
-                            <div className="text-[11px] font-mono text-slate-400 truncate max-w-[200px]" title={allCodes.join(', ')}>
-                              {allCodes.slice(0, 3).join(', ')}{allCodes.length > 3 ? ` +${allCodes.length - 3}` : ''}
+                          {s?.plateNumbers && s.plateNumbers.length > 0 && (
+                            <div className="text-[11px] font-mono text-slate-500 truncate max-w-[200px]" title={allCodes.join(', ')}>
+                              {s.plateNumbers.length === 1
+                                ? `Placa #${s.plateNumbers[0]} (${s.qrCodes.length > 0 && s.nfcTags.length > 0 ? 'QR + NFC' : s.qrCodes.length > 0 ? 'QR' : 'NFC'})`
+                                : `Placas: #${s.plateNumbers.join(', #')}`}
                             </div>
                           )}
                         </div>
@@ -479,9 +487,9 @@ export default function Estabelecimentos() {
                       <span>{totalScans} scans</span>
                     </span>
 
-                    {allCodes.length > 0 && (
-                      <span className="text-[11px] font-mono text-slate-500 ml-auto truncate max-w-[120px]">
-                        {allCodes.slice(0, 2).join(', ')}{allCodes.length > 2 ? '...' : ''}
+                    {s?.plateNumbers && s.plateNumbers.length > 0 && (
+                      <span className="text-[11px] font-mono text-slate-500 ml-auto truncate max-w-[130px]">
+                        {s.plateNumbers.length === 1 ? `Placa #${s.plateNumbers[0]}` : `Placas #${s.plateNumbers.join(', #')}`}
                       </span>
                     )}
                   </div>
