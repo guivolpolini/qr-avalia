@@ -13,6 +13,7 @@ export interface Estabelecimento {
   instagram: string;
   site_com_admin: boolean;
   filtro_estrelas_ativo?: boolean;
+  email_notificacao?: string;
   created_at: string;
   updated_at: string;
 }

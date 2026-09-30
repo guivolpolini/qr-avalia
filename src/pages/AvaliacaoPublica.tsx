@@ -10,6 +10,7 @@ import {
   Loader2,
   CheckCircle2,
   ShieldCheck,
+  Mail,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
@@ -21,7 +22,10 @@ export default function AvaliacaoPublica() {
   const [rating, setRating] = useState<number | null>(null);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
-  const [submittedFeedback, setSubmittedFeedback] = useState(false);
+  const [clienteNome, setClienteNome] = useState('');
+  const [clienteContato, setClienteContato] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSentSuccess, setEmailSentSuccess] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -63,6 +67,51 @@ export default function AvaliacaoPublica() {
   const zapUrl = zapFinal
     ? `https://wa.me/${zapFinal}?text=${encodeURIComponent(zapMensagem)}`
     : `https://wa.me/?text=${encodeURIComponent(zapMensagem)}`;
+
+  async function handleSendEmail(e: React.FormEvent) {
+    e.preventDefault();
+    if (!estabelecimento?.email_notificacao) return;
+
+    setSendingEmail(true);
+
+    try {
+      const res = await fetch('/api/send-feedback-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: estabelecimento.email_notificacao,
+          estabelecimentoNome: estabelecimento.nome,
+          rating: rating || 1,
+          mensagem: feedbackText.trim(),
+          clienteNome: clienteNome.trim(),
+          clienteContato: clienteContato.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setEmailSentSuccess(true);
+      } else {
+        // Fallback suave via mailto se API key do Resend não estiver configurada
+        const mailtoSubject = encodeURIComponent(`Feedback Privado (${rating}★) - ${estabelecimento.nome}`);
+        const mailtoBody = encodeURIComponent(
+          `Nota dada: ${rating} estrelas\n\nRelato:\n"${feedbackText.trim()}"\n\nCliente: ${clienteNome.trim() || 'Anônimo'}\nContato: ${clienteContato.trim() || 'Não informado'}`
+        );
+        window.location.href = `mailto:${estabelecimento.email_notificacao}?subject=${mailtoSubject}&body=${mailtoBody}`;
+        setEmailSentSuccess(true);
+      }
+    } catch {
+      // Fallback em caso de erro de rede
+      const mailtoSubject = encodeURIComponent(`Feedback Privado (${rating}★) - ${estabelecimento.nome}`);
+      const mailtoBody = encodeURIComponent(
+        `Nota dada: ${rating} estrelas\n\nRelato:\n"${feedbackText.trim()}"\n\nCliente: ${clienteNome.trim() || 'Anônimo'}\nContato: ${clienteContato.trim() || 'Não informado'}`
+      );
+      window.location.href = `mailto:${estabelecimento.email_notificacao}?subject=${mailtoSubject}&body=${mailtoBody}`;
+      setEmailSentSuccess(true);
+    } finally {
+      setSendingEmail(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -186,56 +235,124 @@ export default function AvaliacaoPublica() {
         {/* ──────── ETAPA 2B: FEEDBACK INTERMEDIÁRIO (1 A 3 ESTRELAS) ──────── */}
         {rating !== null && rating <= 3 && (
           <div className="mt-5 space-y-4 animate-fade-in text-left">
-            <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-              <MessageSquareWarning size={20} className="text-amber-600 shrink-0" />
-              <span>
-                Sentimos muito que sua experiência não tenha sido 5 estrelas. Queremos ouvir você para resolver!
-              </span>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                O que aconteceu? Conte diretamente ao gerente:
-              </label>
-              <textarea
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                placeholder="Ex: O pedido demorou um pouco, ou a comida veio fria..."
-                className="input min-h-24 text-xs leading-relaxed"
-                autoFocus
-              />
-            </div>
-
-            {/* Ação: WhatsApp da Gerência */}
-            <a
-              href={zapUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20 active:scale-95 transition-all text-white"
-            >
-              <Send size={16} />
-              <span>Enviar para a Gerência no WhatsApp</span>
-            </a>
-
-            {/* Link opcional discreto para cumprir políticas do Google */}
-            <div className="pt-3 border-t border-slate-100 text-center">
-              <a
-                href={estabelecimento.link_google}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] text-slate-400 hover:text-slate-600 underline"
-              >
-                Prefiro avaliar publicamente no Google
-              </a>
-              <div className="mt-2">
+            {emailSentSuccess ? (
+              <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3 animate-fade-in">
+                <CheckCircle2 size={40} className="text-emerald-600 mx-auto" />
+                <h3 className="text-base font-bold text-emerald-950">Mensagem Enviada com Sucesso!</h3>
+                <p className="text-xs text-emerald-800 leading-relaxed">
+                  Seu relato foi encaminhado diretamente para a gerência de <strong>{estabelecimento.nome}</strong>. Agradecemos por nos ajudar a melhorar o nosso atendimento!
+                </p>
                 <button
-                  onClick={() => setRating(null)}
-                  className="text-xs text-slate-400 hover:text-slate-600 font-medium cursor-pointer"
+                  onClick={() => {
+                    setEmailSentSuccess(false);
+                    setRating(null);
+                    setFeedbackText('');
+                  }}
+                  className="btn-secondary text-xs mt-3 cursor-pointer"
                 >
-                  Voltar
+                  Concluir
                 </button>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                  <MessageSquareWarning size={20} className="text-amber-600 shrink-0" />
+                  <span>
+                    Sentimos muito que sua experiência não tenha sido 5 estrelas. Queremos ouvir você para resolver!
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                    O que aconteceu? Conte diretamente à gerência:
+                  </label>
+                  <textarea
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="Ex: O pedido demorou um pouco, ou a comida veio fria..."
+                    className="input min-h-24 text-xs leading-relaxed"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Dados opcionais do cliente */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                      Seu Nome (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={clienteNome}
+                      onChange={(e) => setClienteNome(e.target.value)}
+                      placeholder="Ex: Maria"
+                      className="input text-xs py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                      Telefone/Zap (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={clienteContato}
+                      onChange={(e) => setClienteContato(e.target.value)}
+                      placeholder="(11) 99999-9999"
+                      className="input text-xs py-2"
+                    />
+                  </div>
+                </div>
+
+                {/* Opções de Envio: WhatsApp e/ou E-mail */}
+                <div className="space-y-2 pt-2">
+                  <a
+                    href={zapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary w-full py-3.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20 active:scale-95 transition-all text-white"
+                  >
+                    <Send size={15} />
+                    <span>Enviar no WhatsApp da Gerência</span>
+                  </a>
+
+                  {estabelecimento.email_notificacao && (
+                    <button
+                      type="button"
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail}
+                      className="btn-secondary w-full py-3 text-xs font-bold flex items-center justify-center gap-2 border-slate-300 hover:border-slate-400 active:scale-95 transition-all cursor-pointer"
+                    >
+                      {sendingEmail ? (
+                        <Loader2 size={15} className="animate-spin text-brand-600" />
+                      ) : (
+                        <Mail size={15} className="text-slate-600" />
+                      )}
+                      <span>{sendingEmail ? 'Enviando e-mail...' : 'Enviar por E-mail à Diretoria'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Link opcional discreto para cumprir políticas do Google */}
+                <div className="pt-3 border-t border-slate-100 text-center">
+                  <a
+                    href={estabelecimento.link_google}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-slate-400 hover:text-slate-600 underline"
+                  >
+                    Prefiro avaliar publicamente no Google
+                  </a>
+                  <div className="mt-2">
+                    <button
+                      onClick={() => setRating(null)}
+                      className="text-xs text-slate-400 hover:text-slate-600 font-medium cursor-pointer"
+                    >
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

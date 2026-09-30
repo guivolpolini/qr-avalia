@@ -992,3 +992,15 @@ $$;
 
 GRANT EXECUTE ON FUNCTION get_relatorio_publico(uuid, integer) TO anon, authenticated;
 
+
+-- ==========================================
+-- MIGRATION: 20260930140000_add_email_notificacao.sql
+-- ==========================================
+
+/*
+# Migração: Campo email_notificacao para recebimento de queixas privadas
+*/
+
+ALTER TABLE estabelecimentos
+  ADD COLUMN IF NOT EXISTS email_notificacao text DEFAULT '';
+

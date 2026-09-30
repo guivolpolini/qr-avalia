@@ -25,7 +25,7 @@ import RelatorioModal from '@/components/RelatorioModal';
 const emptyForm = {
   nome: '', link_google: '', telefone: '', endereco: '', ativo: true,
   tipo_negocio: '', descricao: '', cardapio: '', cor_marca: '', whatsapp: '', instagram: '',
-  site_com_admin: false, filtro_estrelas_ativo: false,
+  site_com_admin: false, filtro_estrelas_ativo: false, email_notificacao: '',
 };
 
 function gerarPromptSite(e: Estabelecimento): string {
@@ -112,6 +112,7 @@ export default function Estabelecimentos() {
       cor_marca: e.cor_marca ?? '', whatsapp: e.whatsapp ?? '', instagram: e.instagram ?? '',
       site_com_admin: e.site_com_admin ?? false,
       filtro_estrelas_ativo: e.filtro_estrelas_ativo ?? false,
+      email_notificacao: e.email_notificacao ?? '',
     });
     setError(null);
     setShowModal(true);
@@ -126,8 +127,8 @@ export default function Estabelecimentos() {
       if (editing) {
         const { error } = await supabase.from('estabelecimentos').update(form).eq('id', editing.id);
         if (error) {
-          if (error.message.includes('filtro_estrelas_ativo')) {
-            const { filtro_estrelas_ativo, ...fallbackForm } = form;
+          if (error.message.includes('filtro_estrelas_ativo') || error.message.includes('email_notificacao')) {
+            const { filtro_estrelas_ativo, email_notificacao, ...fallbackForm } = form;
             const { error: retryErr } = await supabase.from('estabelecimentos').update(fallbackForm).eq('id', editing.id);
             if (retryErr) { setError(retryErr.message); setSaving(false); return; }
           } else {
@@ -137,8 +138,8 @@ export default function Estabelecimentos() {
       } else {
         const { error } = await supabase.from('estabelecimentos').insert(form);
         if (error) {
-          if (error.message.includes('filtro_estrelas_ativo')) {
-            const { filtro_estrelas_ativo, ...fallbackForm } = form;
+          if (error.message.includes('filtro_estrelas_ativo') || error.message.includes('email_notificacao')) {
+            const { filtro_estrelas_ativo, email_notificacao, ...fallbackForm } = form;
             const { error: retryErr } = await supabase.from('estabelecimentos').insert(fallbackForm);
             if (retryErr) { setError(retryErr.message); setSaving(false); return; }
           } else {
@@ -430,8 +431,26 @@ export default function Estabelecimentos() {
                   </span>
                 </label>
                 <p className="text-xs text-amber-900/80 leading-relaxed pl-6">
-                  Se ativado, clientes que avaliarem de <strong>1 a 3 estrelas</strong> são direcionados para o WhatsApp da gerência em vez de avaliar no Google, blindando a nota do cliente.
+                  Se ativado, clientes que avaliarem de <strong>1 a 3 estrelas</strong> são direcionados para o WhatsApp ou E-mail da gerência em vez de avaliar no Google, blindando a nota do cliente.
                 </p>
+
+                {form.filtro_estrelas_ativo && (
+                  <div className="pt-2 border-t border-amber-200/80 space-y-1.5 pl-6">
+                    <label className="text-xs font-bold text-amber-950 block">
+                      E-mail da Gerência para Receber Queixas (Opcional)
+                    </label>
+                    <input
+                      type="email"
+                      value={form.email_notificacao}
+                      onChange={(e) => setForm({ ...form, email_notificacao: e.target.value })}
+                      className="input text-xs bg-white"
+                      placeholder="gerencia@empresa.com"
+                    />
+                    <span className="text-[11px] text-amber-800/80 block">
+                      O cliente insatisfeito poderá escolher entre falar no WhatsApp ou enviar direto para este e-mail.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <details className="pt-1">
