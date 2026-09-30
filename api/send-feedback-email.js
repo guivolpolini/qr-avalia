@@ -95,7 +95,7 @@ export default async function handler(req) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'QR Avalia Alertas <onboarding@resend.dev>',
+        from: process.env.RESEND_FROM_EMAIL || 'QR Avalia Alertas <onboarding@resend.dev>',
         to: [to],
         subject: `⚠️ Alerta de Avaliação Privada (${rating}★) — ${nomeLoja}`,
         html: htmlContent,
