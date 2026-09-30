@@ -35,6 +35,19 @@ export default function AvaliacaoPublica() {
 
     async function loadEst() {
       setLoading(true);
+
+      // 1. Tenta via RPC (permite que clientes anônimos leiam dados públicos com segurança)
+      const { data: rpcData } = await supabase.rpc('get_avaliacao_publica', {
+        p_estabelecimento_id: id,
+      });
+
+      if (rpcData) {
+        setEstabelecimento(rpcData as Estabelecimento);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fallback via select direto
       const { data } = await supabase
         .from('estabelecimentos')
         .select('*')

@@ -1016,3 +1016,50 @@ ALTER TABLE estabelecimentos
 ALTER TABLE estabelecimentos
   ADD COLUMN IF NOT EXISTS canal_queixas text DEFAULT 'ambos';
 
+
+-- ==========================================
+-- MIGRATION: 20260930150000_add_get_avaliacao_publica.sql
+-- ==========================================
+
+/*
+# Migração: Permissão pública e RPC get_avaliacao_publica para a tela de avaliação
+*/
+
+DROP POLICY IF EXISTS "public_select_active_estabelecimentos" ON estabelecimentos;
+CREATE POLICY "public_select_active_estabelecimentos" ON estabelecimentos
+  FOR SELECT TO anon
+  USING (ativo = true);
+
+CREATE OR REPLACE FUNCTION get_avaliacao_publica(p_estabelecimento_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_est estabelecimentos%ROWTYPE;
+BEGIN
+  SELECT * INTO v_est
+  FROM estabelecimentos
+  WHERE id = p_estabelecimento_id AND ativo = true
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'id', v_est.id,
+    'nome', v_est.nome,
+    'link_google', v_est.link_google,
+    'whatsapp', v_est.whatsapp,
+    'telefone', v_est.telefone,
+    'canal_queixas', COALESCE(v_est.canal_queixas, 'ambos'),
+    'email_notificacao', COALESCE(v_est.email_notificacao, ''),
+    'filtro_estrelas_ativo', COALESCE(v_est.filtro_estrelas_ativo, false)
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_avaliacao_publica(uuid) TO anon, authenticated;
+
