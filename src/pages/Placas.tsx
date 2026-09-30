@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
   Plus, QrCode as QrIcon, Nfc as NfcIcon, Download, Link2, Unlink, X,
-  Loader2, Search, Eye, Copy, Check, Trash2, Printer, Camera,
+  Loader2, Search, Eye, Copy, Check, Trash2, Printer, Camera, ExternalLink,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
@@ -543,11 +543,31 @@ export default function Placas() {
                 </p>
               )}
             </div>
-            {view === 'qr' && (
+            {view === 'qr' ? (
               <button onClick={() => downloadPng(showPreview)} className="btn-primary w-full" disabled={!qrDataUrls[showPreview.id]}>
                 <Download size={18} />
                 Baixar PNG
               </button>
+            ) : (
+              <div className="space-y-2 w-full pt-1">
+                <button
+                  type="button"
+                  onClick={() => copyUrl(showPreview)}
+                  className="btn-primary w-full py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  {copiedId === showPreview.id ? <Check size={16} /> : <Copy size={16} />}
+                  {copiedId === showPreview.id ? 'URL Copiada!' : 'Copiar URL para Gravar na Tag'}
+                </button>
+                <a
+                  href={generateNfcUrl(showPreview.codigo)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary w-full py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 text-slate-700"
+                >
+                  <ExternalLink size={16} />
+                  Testar Redirecionamento da Tag
+                </a>
+              </div>
             )}
           </div>
         </Modal>

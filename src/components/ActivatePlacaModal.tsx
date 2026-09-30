@@ -9,11 +9,15 @@ import {
   ExternalLink,
   Store,
   QrCode as QrIcon,
+  Nfc as NfcIcon,
   Plus,
   RefreshCw,
   ArrowRight,
   Sparkles,
   Link2,
+  Copy,
+  Check,
+  Radio,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
@@ -30,6 +34,7 @@ type Step = 'scan' | 'confirm' | 'success';
 interface FoundPlaca {
   id: string;
   codigo: string;
+  tipo: 'qr' | 'nfc';
   ativo: boolean;
   estabelecimento_id: string | null;
   estabelecimento?: { id: string; nome: string; link_google?: string } | null;
@@ -67,6 +72,14 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
   // NFC associada opcional
   const [vincularNfcJunto, setVincularNfcJunto] = useState(true);
   const [matchingNfcCode, setMatchingNfcCode] = useState<string | null>(null);
+
+  // Gravação NFC
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [nfcWriting, setNfcWriting] = useState(false);
+  const [nfcWriteSuccess, setNfcWriteSuccess] = useState(false);
+  const [nfcWriteError, setNfcWriteError] = useState<string | null>(null);
+
+  const canWebNfc = typeof window !== 'undefined' && 'NDEFReader' in window;
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = 'interactive-qr-reader';
@@ -150,7 +163,6 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
   // Gerencia ciclo de vida da câmera ao abrir/fechar modal
   useEffect(() => {
     if (isOpen && step === 'scan' && !initialCode) {
-      // Pequeno timeout para dar tempo do elemento DOM ser montado
       const timer = setTimeout(() => {
         startCamera();
       }, 300);
@@ -163,7 +175,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
     }
   }, [isOpen, step, initialCode, startCamera, stopCamera]);
 
-  // Busca placa no Supabase
+  // Busca placa ou tag no Supabase com detecção automática do tipo
   async function handleLookupCode(rawCode: string) {
     const code = extrairCodigo(rawCode);
     if (!code) return;
@@ -172,39 +184,89 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
     setCameraError(null);
 
     try {
-      // 1. Procura na tabela qr_codes
-      const { data: existing, error } = await supabase
-        .from('qr_codes')
-        .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
-        .eq('codigo', code)
-        .maybeSingle();
+      const isNfcByPrefix = code.startsWith('NFC');
+      let foundTipo: 'qr' | 'nfc' = isNfcByPrefix ? 'nfc' : 'qr';
+      let existingItem: any = null;
 
-      if (error) throw error;
-
-      // 2. Procura se existe uma NFC correspondente (ex: se o QR é QR001, busca NFC001)
-      const numMatch = code.match(/\d+/);
-      let nfcCodeCandidate: string | null = null;
-      if (numMatch) {
-        nfcCodeCandidate = `NFC${numMatch[0]}`;
-        const { data: nfcTag } = await supabase
+      if (isNfcByPrefix) {
+        // 1. Procura primeiro na tabela nfc_tags
+        const { data: nfcData, error: nfcErr } = await supabase
           .from('nfc_tags')
-          .select('codigo')
-          .eq('codigo', nfcCodeCandidate)
+          .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
+          .eq('codigo', code)
           .maybeSingle();
-        setMatchingNfcCode(nfcTag ? nfcCodeCandidate : null);
+
+        if (nfcErr) throw nfcErr;
+        if (nfcData) {
+          existingItem = nfcData;
+          foundTipo = 'nfc';
+        } else {
+          // Fallback: talvez esteja em qr_codes
+          const { data: qrData } = await supabase
+            .from('qr_codes')
+            .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
+            .eq('codigo', code)
+            .maybeSingle();
+          if (qrData) {
+            existingItem = qrData;
+            foundTipo = 'qr';
+          }
+        }
       } else {
-        setMatchingNfcCode(null);
+        // 1. Procura primeiro na tabela qr_codes
+        const { data: qrData, error: qrErr } = await supabase
+          .from('qr_codes')
+          .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
+          .eq('codigo', code)
+          .maybeSingle();
+
+        if (qrErr) throw qrErr;
+        if (qrData) {
+          existingItem = qrData;
+          foundTipo = 'qr';
+        } else {
+          // Fallback: talvez seja uma tag nfc sem prefixo
+          const { data: nfcData } = await supabase
+            .from('nfc_tags')
+            .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
+            .eq('codigo', code)
+            .maybeSingle();
+          if (nfcData) {
+            existingItem = nfcData;
+            foundTipo = 'nfc';
+          }
+        }
       }
 
-      if (existing) {
-        setPlaca(existing as unknown as FoundPlaca);
+      // Procura código par correspondente (se QR001 -> busca NFC001; se NFC001 -> busca QR001)
+      const numMatch = code.match(/\d+/);
+      let counterpartCode: string | null = null;
+
+      if (numMatch) {
+        const num = numMatch[0];
+        counterpartCode = foundTipo === 'qr' ? `NFC${num}` : `QR${num}`;
+      }
+
+      setMatchingNfcCode(counterpartCode);
+      setVincularNfcJunto(true);
+
+      if (existingItem) {
+        setPlaca({
+          id: existingItem.id,
+          codigo: existingItem.codigo,
+          tipo: foundTipo,
+          ativo: existingItem.ativo,
+          estabelecimento_id: existingItem.estabelecimento_id || null,
+          estabelecimento: existingItem.estabelecimento || null,
+        });
         setIsNewPlaca(false);
-        setSelectedEstId(existing.estabelecimento_id || '');
+        setSelectedEstId(existingItem.estabelecimento_id || '');
       } else {
-        // Placa nova, não cadastrada ainda
+        // Placa ou tag nova, não cadastrada ainda
         setPlaca({
           id: '',
           codigo: code,
+          tipo: foundTipo,
           ativo: true,
           estabelecimento_id: null,
           estabelecimento: null,
@@ -215,14 +277,14 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
 
       setStep('confirm');
     } catch (err: any) {
-      console.error('Erro ao consultar placa:', err);
+      console.error('Erro ao consultar placa/tag:', err);
       setCameraError('Erro ao consultar o código no banco. Tente novamente.');
     } finally {
       setSearching(false);
     }
   }
 
-  // Salvar ativação
+  // Salvar ativação de QR Code ou Tag NFC
   async function handleSaveActivation() {
     if (!placa) return;
     setSaving(true);
@@ -259,32 +321,51 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
         return;
       }
 
-      // Atualiza ou insere a placa QR
+      const isNfc = placa.tipo === 'nfc';
+      const primaryTable = isNfc ? 'nfc_tags' : 'qr_codes';
+      const dynamicUrl = `${window.location.origin}/${isNfc ? 'n' : 'q'}/${placa.codigo}`;
+
       if (isNewPlaca) {
+        const insertPayload: any = {
+          codigo: placa.codigo,
+          estabelecimento_id: finalEstId,
+          ativo: true,
+        };
+        if (isNfc) {
+          insertPayload.url_dinamica = dynamicUrl;
+        }
+
         const { data: inserted, error: insertErr } = await supabase
-          .from('qr_codes')
-          .insert({
-            codigo: placa.codigo,
-            estabelecimento_id: finalEstId,
-            ativo: true,
-          })
+          .from(primaryTable)
+          .insert(insertPayload)
           .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
           .single();
 
         if (insertErr) throw insertErr;
-        setPlaca(inserted as unknown as FoundPlaca);
+        setPlaca({
+          id: inserted.id,
+          codigo: inserted.codigo,
+          tipo: placa.tipo,
+          ativo: inserted.ativo,
+          estabelecimento_id: finalEstId,
+          estabelecimento: inserted.estabelecimento,
+        });
       } else {
+        const updatePayload: any = {
+          estabelecimento_id: finalEstId,
+          ativo: true,
+        };
+        if (isNfc) {
+          updatePayload.url_dinamica = dynamicUrl;
+        }
+
         const { error: updateErr } = await supabase
-          .from('qr_codes')
-          .update({
-            estabelecimento_id: finalEstId,
-            ativo: true,
-          })
+          .from(primaryTable)
+          .update(updatePayload)
           .eq('id', placa.id);
 
         if (updateErr) throw updateErr;
 
-        // Atualiza estado local para tela de sucesso
         const estObj = estabelecimentos.find((e) => e.id === finalEstId);
         setPlaca((prev) =>
           prev
@@ -297,15 +378,36 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
         );
       }
 
-      // Se houver NFC correspondente e o usuário quiser vincular junto
+      // Se houver código par correspondente (ex: QR001 <-> NFC001) e vincular junto
       if (matchingNfcCode && vincularNfcJunto) {
-        await supabase
-          .from('nfc_tags')
-          .update({
+        const secondaryTable = isNfc ? 'qr_codes' : 'nfc_tags';
+        const secondaryUrl = `${window.location.origin}/${isNfc ? 'q' : 'n'}/${matchingNfcCode}`;
+
+        const { data: existingSec } = await supabase
+          .from(secondaryTable)
+          .select('id')
+          .eq('codigo', matchingNfcCode)
+          .maybeSingle();
+
+        if (existingSec) {
+          await supabase
+            .from(secondaryTable)
+            .update({
+              estabelecimento_id: finalEstId,
+              ativo: true,
+            })
+            .eq('id', existingSec.id);
+        } else {
+          const secPayload: any = {
+            codigo: matchingNfcCode,
             estabelecimento_id: finalEstId,
             ativo: true,
-          })
-          .eq('codigo', matchingNfcCode);
+          };
+          if (!isNfc) {
+            secPayload.url_dinamica = secondaryUrl;
+          }
+          await supabase.from(secondaryTable).insert(secPayload);
+        }
       }
 
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -315,10 +417,43 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
       if (onSuccess) onSuccess();
       setStep('success');
     } catch (err: any) {
-      console.error('Erro ao ativar placa:', err);
-      alert(`Erro ao ativar placa: ${err?.message || 'Tente novamente.'}`);
+      console.error('Erro ao ativar placa/tag:', err);
+      alert(`Erro ao ativar: ${err?.message || 'Tente novamente.'}`);
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Gravação via Web NFC direta no navegador
+  async function handleWriteNfc(urlToWrite: string) {
+    if (!canWebNfc) {
+      alert('A gravação direta via navegador está disponível no Google Chrome para Android com NFC ativado. No iPhone, use o aplicativo gratuito NFC Tools.');
+      return;
+    }
+
+    setNfcWriting(true);
+    setNfcWriteError(null);
+    setNfcWriteSuccess(false);
+
+    try {
+      const ndef = new (window as any).NDEFReader();
+      await ndef.write({
+        records: [
+          {
+            recordType: 'url',
+            data: urlToWrite,
+          },
+        ],
+      });
+      setNfcWriteSuccess(true);
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate?.([50, 100, 50]);
+      }
+    } catch (err: any) {
+      console.error('Erro ao gravar NFC:', err);
+      setNfcWriteError(err?.message || 'Falha ao gravar na tag. Verifique se o NFC do celular está ativado e aproxime novamente.');
+    } finally {
+      setNfcWriting(false);
     }
   }
 
@@ -332,11 +467,23 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
     setNewEstNome('');
     setNewEstLink('');
     setNewEstWhats('');
+    setCopiedUrl(false);
+    setNfcWriting(false);
+    setNfcWriteSuccess(false);
+    setNfcWriteError(null);
   }
 
   if (!isOpen) return null;
 
-  const publicTestUrl = placa?.codigo ? `${window.location.origin}/q/${placa.codigo}` : '';
+  const isNfc = placa?.tipo === 'nfc';
+  const publicTestUrl = placa?.codigo
+    ? `${window.location.origin}/${isNfc ? 'n' : 'q'}/${placa.codigo}`
+    : '';
+  const nfcUrlToRecord = isNfc
+    ? publicTestUrl
+    : matchingNfcCode
+    ? `${window.location.origin}/n/${matchingNfcCode}`
+    : '';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -360,18 +507,20 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
-              <Camera size={18} />
+              {step === 'scan' && <Camera size={18} />}
+              {step === 'confirm' && (isNfc ? <NfcIcon size={18} /> : <QrIcon size={18} />)}
+              {step === 'success' && <CheckCircle2 size={18} className="text-emerald-600" />}
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 leading-tight">
                 {step === 'scan' && 'Escanear ou Identificar Placa'}
-                {step === 'confirm' && 'Vincular ao Estabelecimento'}
-                {step === 'success' && 'Placa Ativada com Sucesso!'}
+                {step === 'confirm' && `Vincular ${isNfc ? 'Tag NFC' : 'Placa QR'}`}
+                {step === 'success' && `${isNfc ? 'Tag NFC' : 'Placa'} Ativada com Sucesso!`}
               </h2>
               <p className="text-xs text-slate-400">
-                {step === 'scan' && 'Aponte para o QR Code da placa'}
-                {step === 'confirm' && `Código identificado: ${placa?.codigo}`}
-                {step === 'success' && 'Pronta para uso na mesa do cliente'}
+                {step === 'scan' && 'Aponte a câmera ou digite o código'}
+                {step === 'confirm' && `Código: ${placa?.codigo}`}
+                {step === 'success' && 'Pronta para ser usada no cliente'}
               </p>
             </div>
           </div>
@@ -408,70 +557,75 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                     <span className="text-xs font-medium text-slate-200">{cameraError}</span>
                     <button
                       onClick={startCamera}
-                      className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold mt-2 transition-colors"
+                      className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center gap-1.5 mx-auto"
                     >
-                      Tentar câmera novamente
+                      <RefreshCw size={12} />
+                      Tentar Novamente
                     </button>
                   </div>
                 )}
 
-                {/* Mira e animação de scanner */}
                 {cameraActive && (
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div className="w-48 h-48 border-2 border-brand-500 rounded-xl relative shadow-[0_0_0_9999px_rgba(15,23,42,0.45)]">
-                      <div className="absolute inset-x-0 h-0.5 bg-brand-400 animate-pulse top-1/2 -translate-y-1/2" />
-                    </div>
+                  <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none">
+                    <span className="text-[11px] font-semibold text-white/90 bg-slate-950/70 px-3 py-1 rounded-full backdrop-blur-xs border border-white/10">
+                      Posicione o QR Code no centro
+                    </span>
                   </div>
                 )}
               </div>
 
               {/* Divisor */}
-              <div className="relative text-center my-3">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
-                </div>
-                <span className="relative bg-white px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  Ou digite o código
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-slate-200"></div>
+                <span className="flex-shrink mx-3 text-xs uppercase font-bold text-slate-400">
+                  Ou digite o código (QR ou NFC)
                 </span>
+                <div className="flex-grow border-t border-slate-200"></div>
               </div>
 
-              {/* Digitar código manual */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <QrIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              {/* Digitação Manual */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (manualCode.trim()) {
+                    handleLookupCode(manualCode);
+                  }
+                }}
+                className="space-y-3"
+              >
+                <div className="flex gap-2">
                   <input
                     type="text"
                     value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="Ex: QR001 ou cole a URL"
-                    className="input pl-10 text-sm font-mono uppercase tracking-wider"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleLookupCode(manualCode);
-                      }
-                    }}
+                    onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+                    placeholder="Ex: QR001, NFC001..."
+                    className="input font-mono font-bold uppercase tracking-wider text-base py-3"
+                    disabled={searching}
                   />
+                  <button
+                    type="submit"
+                    disabled={!manualCode.trim() || searching}
+                    className="btn-primary px-5 py-3 text-sm font-bold flex items-center gap-1.5"
+                  >
+                    {searching ? <Loader2 size={18} className="animate-spin" /> : 'Identificar'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleLookupCode(manualCode)}
-                  disabled={!manualCode.trim() || searching}
-                  className="btn-primary px-5 shrink-0"
-                >
-                  {searching ? <Loader2 size={16} className="animate-spin" /> : 'Buscar'}
-                </button>
-              </div>
+                <p className="text-[11px] text-slate-400 text-center">
+                  Dica: Você pode digitar códigos de QR Code (QR001) ou Tags NFC (NFC001).
+                </p>
+              </form>
             </div>
           )}
 
           {/* ──────────────── STEP 2: CONFIRMAR E VINCULAR ──────────────── */}
           {step === 'confirm' && placa && (
             <div className="space-y-5 animate-fade-in">
-              {/* Card de Identificação da Placa */}
+              {/* Card de Identificação da Placa / Tag */}
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Código da Placa</span>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    {isNfc ? 'Tag NFC Identificada' : 'Placa QR Identificada'}
+                  </span>
                   <span
                     className={`badge ${
                       isNewPlaca
@@ -486,11 +640,16 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-sm">
-                    <QrIcon size={20} />
+                  <div className={`w-10 h-10 rounded-xl ${isNfc ? 'bg-teal-600' : 'bg-brand-600'} text-white flex items-center justify-center font-bold text-sm shadow-xs`}>
+                    {isNfc ? <NfcIcon size={20} /> : <QrIcon size={20} />}
                   </div>
                   <div>
-                    <h3 className="text-xl font-extrabold text-slate-900 font-mono tracking-tight">{placa.codigo}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-extrabold text-slate-900 font-mono tracking-tight">{placa.codigo}</h3>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${isNfc ? 'bg-teal-100 text-teal-800' : 'bg-blue-100 text-blue-800'}`}>
+                        {isNfc ? 'NFC' : 'QR Code'}
+                      </span>
+                    </div>
                     <p className="text-xs text-slate-500">
                       {placa.estabelecimento
                         ? `Atualmente associada a: ${placa.estabelecimento.nome}`
@@ -503,7 +662,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                   <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
                     <span className="flex items-center gap-1.5 font-medium">
                       <Link2 size={14} className="text-teal-600" />
-                      Tag NFC correspondente ({matchingNfcCode})
+                      {isNfc ? 'QR Code' : 'Tag NFC'} par correspondente ({matchingNfcCode})
                     </span>
                     <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-teal-700">
                       <input
@@ -525,7 +684,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                   <button
                     type="button"
                     onClick={() => setShowNewEstForm(!showNewEstForm)}
-                    className="text-xs font-semibold text-brand-600 hover:text-brand-800 flex items-center gap-1"
+                    className="text-xs font-semibold text-brand-600 hover:text-brand-800 flex items-center gap-1 cursor-pointer"
                   >
                     <Plus size={14} />
                     {showNewEstForm ? 'Escolher existente' : 'Cadastrar novo no local'}
@@ -601,14 +760,14 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
 
               {/* Botões de Ação */}
               <div className="flex gap-2 pt-2">
-                <button type="button" onClick={handleReset} className="btn-secondary flex-1 py-3 text-sm">
+                <button type="button" onClick={handleReset} className="btn-secondary flex-1 py-3 text-sm cursor-pointer">
                   Voltar
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveActivation}
                   disabled={saving || (!selectedEstId && !showNewEstForm)}
-                  className="btn-primary flex-2 py-3 text-sm font-bold flex items-center justify-center gap-2"
+                  className="btn-primary flex-2 py-3 text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {saving ? <Loader2 size={18} className="animate-spin" /> : 'Confirmar Ativação'}
                   {!saving && <ArrowRight size={16} />}
@@ -625,13 +784,19 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
               </div>
 
               <div>
-                <h3 className="text-xl font-extrabold text-slate-900">Placa Ativada com Sucesso!</h3>
+                <h3 className="text-xl font-extrabold text-slate-900">
+                  {isNfc ? 'Tag NFC Ativada com Sucesso!' : 'Placa Ativada com Sucesso!'}
+                </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   O redirecionamento dinâmico já está funcionando perfeitamente.
                 </p>
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Tipo:</span>
+                  <span className="font-bold text-slate-700 uppercase">{isNfc ? 'Tag NFC' : 'QR Code'}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Código:</span>
                   <span className="font-mono font-bold text-slate-800">{placa.codigo}</span>
@@ -648,13 +813,75 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                 </div>
                 {matchingNfcCode && vincularNfcJunto && (
                   <div className="flex justify-between pt-1 border-t border-slate-200/60 text-teal-700 font-medium">
-                    <span>NFC Vinculado:</span>
+                    <span>{isNfc ? 'QR Vinculado:' : 'NFC Vinculado:'}</span>
                     <span className="font-mono font-bold">{matchingNfcCode}</span>
                   </div>
                 )}
               </div>
 
-              {/* Botão Principal de Testar Placa */}
+              {/* Se for NFC ou tiver NFC vinculado, exibe ferramentas de gravação */}
+              {(isNfc || (matchingNfcCode && vincularNfcJunto)) && (
+                <div className="p-4 rounded-2xl bg-teal-50/70 border border-teal-200/80 text-left space-y-3">
+                  <div className="flex items-center gap-2 text-teal-900 font-bold text-xs">
+                    <NfcIcon size={16} className="text-teal-600" />
+                    <span>Gravar na Tag NFC Física</span>
+                  </div>
+
+                  <p className="text-[11px] text-teal-700 leading-tight">
+                    Para o cliente aproximar o celular e abrir, esta URL precisa estar gravada no chip NFC:
+                  </p>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-teal-200 flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs text-slate-700 truncate" title={nfcUrlToRecord}>
+                      {nfcUrlToRecord}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(nfcUrlToRecord);
+                        setCopiedUrl(true);
+                        setTimeout(() => setCopiedUrl(false), 2000);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                    >
+                      {copiedUrl ? <Check size={13} /> : <Copy size={13} />}
+                      <span>{copiedUrl ? 'Copiado!' : 'Copiar URL'}</span>
+                    </button>
+                  </div>
+
+                  {canWebNfc && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleWriteNfc(nfcUrlToRecord)}
+                        disabled={nfcWriting}
+                        className="w-full py-2.5 px-3 rounded-xl bg-teal-700 text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-teal-800 active:scale-95 transition-all shadow-xs cursor-pointer"
+                      >
+                        <Radio size={14} className={nfcWriting ? 'animate-pulse' : ''} />
+                        <span>{nfcWriting ? 'Aproxime a tag da traseira do celular...' : 'Gravar Tag com este Celular'}</span>
+                      </button>
+                      {nfcWriteSuccess && (
+                        <p className="text-xs text-emerald-700 font-bold mt-1 text-center">✓ Gravado com sucesso na tag NFC!</p>
+                      )}
+                      {nfcWriteError && (
+                        <p className="text-xs text-red-600 font-medium mt-1 text-center">{nfcWriteError}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="text-[11px] text-slate-500 bg-white/80 p-2.5 rounded-xl border border-teal-100 space-y-1">
+                    <p className="font-semibold text-slate-700">📱 Como gravar no iPhone ou Android:</p>
+                    <ol className="list-decimal pl-4 space-y-0.5">
+                      <li>Clique em <strong>Copiar URL</strong> acima</li>
+                      <li>Abra o aplicativo gratuito <strong>NFC Tools</strong></li>
+                      <li>Toque em <strong>Escrever</strong> ➔ <strong>Adicionar registro</strong> ➔ <strong>URL / Link</strong></li>
+                      <li>Cole o link copiado e encoste na tag para gravar!</li>
+                    </ol>
+                  </div>
+                </div>
+              )}
+
+              {/* Botões de Teste e Conclusão */}
               <div className="space-y-2 pt-2">
                 <a
                   href={publicTestUrl}
@@ -663,7 +890,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                   className="btn-primary w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-brand-500/20 active:scale-95 transition-transform"
                 >
                   <ExternalLink size={18} />
-                  Testar Placa Agora (Abrir Google)
+                  Testar Redirecionamento Agora
                 </a>
 
                 <button
@@ -671,7 +898,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                   onClick={() => {
                     handleReset();
                   }}
-                  className="btn-secondary w-full py-2.5 text-xs text-slate-600"
+                  className="btn-secondary w-full py-2.5 text-xs text-slate-600 cursor-pointer"
                 >
                   Ativar outra placa
                 </button>
