@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
+import GoogleReviewGeneratorModal from '@/components/GoogleReviewGeneratorModal';
 
 interface ActivatePlacaModalProps {
   isOpen: boolean;
@@ -65,6 +66,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
   const [estabelecimentos, setEstabelecimentos] = useState<Estabelecimento[]>([]);
   const [selectedEstId, setSelectedEstId] = useState('');
   const [showNewEstForm, setShowNewEstForm] = useState(false);
+  const [showLinkGenModal, setShowLinkGenModal] = useState(false);
   const [newEstNome, setNewEstNome] = useState('');
   const [newEstLink, setNewEstLink] = useState('');
   const [newEstWhats, setNewEstWhats] = useState('');
@@ -712,15 +714,25 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-slate-600 mb-1 block">
-                        Link de Avaliação do Google *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-semibold text-slate-600 block">
+                          Link de Avaliação do Google *
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowLinkGenModal(true)}
+                          className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Sparkles size={12} className="text-amber-500" />
+                          Gerar pelo Maps
+                        </button>
+                      </div>
                       <input
                         type="url"
                         required
                         value={newEstLink}
                         onChange={(e) => setNewEstLink(e.target.value)}
-                        placeholder="https://g.page/r/.../review"
+                        placeholder="https://search.google.com/local/writereview?placeid=..."
                         className="input text-sm py-2"
                       />
                     </div>
@@ -918,6 +930,17 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
           )}
         </div>
       </div>
+
+      {/* Modal Gerador de Link Google */}
+      <GoogleReviewGeneratorModal
+        isOpen={showLinkGenModal}
+        onClose={() => setShowLinkGenModal(false)}
+        initialEstablishmentName={newEstNome}
+        onSelectLink={(link) => {
+          setNewEstLink(link);
+          setShowLinkGenModal(false);
+        }}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Store, X, Search, Phone, MapPin, ExternalLink, Loader2, Sparkles, Copy, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
+import GoogleReviewGeneratorModal from '@/components/GoogleReviewGeneratorModal';
 
 const emptyForm = {
   nome: '', link_google: '', telefone: '', endereco: '', ativo: true,
@@ -41,6 +42,7 @@ export default function Estabelecimentos() {
   const [items, setItems] = useState<Estabelecimento[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showLinkGenerator, setShowLinkGenerator] = useState(false);
   const [editing, setEditing] = useState<Estabelecimento | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -149,15 +151,25 @@ export default function Estabelecimentos() {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Estabelecimentos</h1>
           <p className="text-sm text-slate-500 mt-1">Cadastre e gerencie seus clientes</p>
         </div>
-        <button onClick={openCreate} className="btn-primary">
-          <Plus size={18} />
-          Novo
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowLinkGenerator(true)}
+            className="btn-secondary text-xs sm:text-sm flex items-center gap-1.5"
+            title="Gerar link de avaliação direta com pop-up 5 estrelas"
+          >
+            <Sparkles size={16} className="text-amber-500" />
+            <span>Gerador Google</span>
+          </button>
+          <button onClick={openCreate} className="btn-primary">
+            <Plus size={18} />
+            Novo
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 relative">
@@ -292,8 +304,25 @@ export default function Estabelecimentos() {
                 <input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} className="input" placeholder="Ex: Ótica G&G" />
               </div>
               <div>
-                <label className="label">Link de avaliação do Google *</label>
-                <input required type="url" value={form.link_google} onChange={(e) => setForm({ ...form, link_google: e.target.value })} className="input" placeholder="https://g.page/r/..." />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="label mb-0">Link de avaliação do Google *</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowLinkGenerator(true)}
+                    className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles size={12} className="text-amber-500" />
+                    Gerar pelo Maps
+                  </button>
+                </div>
+                <input
+                  required
+                  type="url"
+                  value={form.link_google}
+                  onChange={(e) => setForm({ ...form, link_google: e.target.value })}
+                  className="input"
+                  placeholder="https://search.google.com/local/writereview?placeid=..."
+                />
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
@@ -396,6 +425,17 @@ export default function Estabelecimentos() {
           </div>
         </div>
       )}
+
+      {/* Gerador de Link de Avaliação Google */}
+      <GoogleReviewGeneratorModal
+        isOpen={showLinkGenerator}
+        onClose={() => setShowLinkGenerator(false)}
+        initialEstablishmentName={form.nome || (editing ? editing.nome : '')}
+        onSelectLink={(link) => {
+          setForm((prev) => ({ ...prev, link_google: link }));
+          setShowLinkGenerator(false);
+        }}
+      />
     </div>
   );
 }
