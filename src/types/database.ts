@@ -15,6 +15,11 @@ export interface Estabelecimento {
   filtro_estrelas_ativo?: boolean;
   email_notificacao?: string;
   canal_queixas?: 'ambos' | 'email' | 'whatsapp';
+  avaliacoes_iniciais?: number | null;
+  nota_inicial?: number | null;
+  avaliacoes_atuais?: number | null;
+  nota_atual?: number | null;
+  data_implantacao?: string | null;
   created_at: string;
   updated_at: string;
 }

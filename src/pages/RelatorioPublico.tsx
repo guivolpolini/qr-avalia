@@ -15,6 +15,7 @@ import {
   Star,
   Store,
   ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
@@ -289,6 +290,101 @@ export default function RelatorioPublico() {
           </div>
         ) : (
           <>
+            {/* Comparativo de Impacto Antes vs Depois da Placa */}
+            {estabelecimento?.avaliacoes_iniciais != null && estabelecimento?.avaliacoes_atuais != null && (() => {
+              const diff = estabelecimento.avaliacoes_atuais - estabelecimento.avaliacoes_iniciais;
+              const percent = estabelecimento.avaliacoes_iniciais > 0
+                ? Math.round((diff / estabelecimento.avaliacoes_iniciais) * 100)
+                : 0;
+              const dataFormatada = estabelecimento.data_implantacao
+                ? new Date(estabelecimento.data_implantacao + 'T00:00:00').toLocaleDateString('pt-BR')
+                : null;
+
+              return (
+                <div className="rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/30 border border-emerald-500/30 shadow-2xl relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-800">
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-bold uppercase tracking-wider mb-1.5 border border-emerald-500/20">
+                        <Sparkles size={12} className="text-amber-400" />
+                        Impacto Real no Google Maps
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                        Evolução Antes vs Depois da Placa
+                      </h3>
+                      {dataFormatada && (
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Placa instalada e operando desde <strong className="text-slate-200">{dataFormatada}</strong>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 self-start sm:self-auto">
+                      <TrendingUp size={16} className="text-emerald-400" />
+                      <div>
+                        <span className="text-xs font-black text-emerald-400">
+                          {diff >= 0 ? `+${diff}` : diff} novas avaliações
+                        </span>
+                        {percent > 0 && (
+                          <span className="text-[10px] text-emerald-400/80 block font-medium">
+                            +{percent}% de crescimento
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-5">
+                    {/* Antes */}
+                    <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                        Antes da Placa VolpoTech
+                      </span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-black text-slate-300">
+                          {estabelecimento.avaliacoes_iniciais}
+                        </span>
+                        <span className="text-xs text-slate-400 font-medium">avaliações</span>
+                      </div>
+                      {estabelecimento.nota_inicial != null && (
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-400 font-semibold">
+                          <Star size={13} className="fill-amber-400" />
+                          <span>Nota média {estabelecimento.nota_inicial.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Depois / Hoje */}
+                    <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/40 relative">
+                      <div className="absolute top-3 right-3">
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                          HOJE
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 block mb-2">
+                        Com a Placa em Operação
+                      </span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-black text-white">
+                          {estabelecimento.avaliacoes_atuais}
+                        </span>
+                        <span className="text-xs text-emerald-300/80 font-medium">avaliações</span>
+                      </div>
+                      {estabelecimento.nota_atual != null ? (
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-400 font-semibold">
+                          <Star size={13} className="fill-amber-400" />
+                          <span>Nota média {estabelecimento.nota_atual.toFixed(1)}</span>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-400 mt-2">
+                          Fluxo ativo gerando novos feedbacks diariamente.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Grid de KPIs Principais */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               {/* Total de Toques */}

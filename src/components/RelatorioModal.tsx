@@ -201,10 +201,15 @@ Olá! Aqui está o resumo de clientes que usaram sua placa de avaliações:
 
 🕒 *Horário de pico:* ${stats.horarioPico}
 📆 *Dia mais movimentado:* ${stats.diaMaisMovimentado}
-
-⭐ *Impacto no Google Maps:*
-Cada toque representa um cliente que teve a oportunidade direta de deixar 5 estrelas no seu negócio.
-
+${
+  estabelecimento.avaliacoes_iniciais != null && estabelecimento.avaliacoes_atuais != null
+    ? `\n🌟 *Evolução no Google Maps (Antes vs Depois da Placa):*
+• Antes da placa: ${estabelecimento.avaliacoes_iniciais} avaliações${estabelecimento.nota_inicial ? ` (${estabelecimento.nota_inicial.toFixed(1)} ⭐)` : ''}
+• Atualmente: *${estabelecimento.avaliacoes_atuais} avaliações*${estabelecimento.nota_atual ? ` (${estabelecimento.nota_atual.toFixed(1)} ⭐)` : ''}
+• Ganho real: *${estabelecimento.avaliacoes_atuais - estabelecimento.avaliacoes_iniciais >= 0 ? '+' : ''}${estabelecimento.avaliacoes_atuais - estabelecimento.avaliacoes_iniciais} novas avaliações!* 🚀\n`
+    : `\n⭐ *Impacto no Google Maps:*
+Cada toque representa um cliente que teve a oportunidade direta de deixar 5 estrelas no seu negócio.\n`
+}
 🌐 *Visualizar painel interativo com gráficos:*
 ${publicReportUrl}
 
@@ -313,6 +318,29 @@ _Dúvidas ou precisa de mais placas? Conte com a VolpoTech!_`;
             </div>
           ) : (
             <>
+              {/* Card Comparativo Antes vs Depois da Placa (se cadastrado) */}
+              {estabelecimento.avaliacoes_iniciais != null && estabelecimento.avaliacoes_atuais != null && (
+                <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 via-amber-500/5 to-transparent border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                      <Sparkles size={13} className="text-amber-500" />
+                      <span>Evolução no Google Maps</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-700">
+                      <span>Antes: <strong>{estabelecimento.avaliacoes_iniciais}</strong>{estabelecimento.nota_inicial ? ` (${estabelecimento.nota_inicial.toFixed(1)} ⭐)` : ''}</span>
+                      <span className="text-slate-400">→</span>
+                      <span>Hoje: <strong>{estabelecimento.avaliacoes_atuais}</strong>{estabelecimento.nota_atual ? ` (${estabelecimento.nota_atual.toFixed(1)} ⭐)` : ''}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-xs">
+                      {estabelecimento.avaliacoes_atuais - estabelecimento.avaliacoes_iniciais >= 0 ? '+' : ''}
+                      {estabelecimento.avaliacoes_atuais - estabelecimento.avaliacoes_iniciais} novas avaliações
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Cards de Métricas Principais */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">

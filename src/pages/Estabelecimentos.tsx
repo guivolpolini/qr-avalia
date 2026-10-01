@@ -19,6 +19,8 @@ import {
   QrCode as QrIcon,
   ScanLine,
   Zap,
+  TrendingUp,
+  Star,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
@@ -30,6 +32,11 @@ const emptyForm = {
   tipo_negocio: '', descricao: '', cardapio: '', cor_marca: '', whatsapp: '', instagram: '',
   site_com_admin: false, filtro_estrelas_ativo: false, email_notificacao: '',
   canal_queixas: 'ambos' as 'ambos' | 'email' | 'whatsapp',
+  avaliacoes_iniciais: '' as string | number,
+  nota_inicial: '' as string | number,
+  avaliacoes_atuais: '' as string | number,
+  nota_atual: '' as string | number,
+  data_implantacao: '',
 };
 
 function gerarPromptSite(e: Estabelecimento): string {
@@ -166,6 +173,11 @@ export default function Estabelecimentos() {
       filtro_estrelas_ativo: e.filtro_estrelas_ativo ?? false,
       email_notificacao: e.email_notificacao ?? '',
       canal_queixas: (e.canal_queixas as 'ambos' | 'email' | 'whatsapp') ?? 'ambos',
+      avaliacoes_iniciais: e.avaliacoes_iniciais ?? '',
+      nota_inicial: e.nota_inicial ?? '',
+      avaliacoes_atuais: e.avaliacoes_atuais ?? '',
+      nota_atual: e.nota_atual ?? '',
+      data_implantacao: e.data_implantacao ?? '',
     });
     setError(null);
     setShowModal(true);
@@ -176,16 +188,34 @@ export default function Estabelecimentos() {
     setSaving(true);
     setError(null);
 
+    const payload: any = {
+      ...form,
+      avaliacoes_iniciais: form.avaliacoes_iniciais !== '' ? Number(form.avaliacoes_iniciais) : null,
+      nota_inicial: form.nota_inicial !== '' ? Number(form.nota_inicial) : null,
+      avaliacoes_atuais: form.avaliacoes_atuais !== '' ? Number(form.avaliacoes_atuais) : null,
+      nota_atual: form.nota_atual !== '' ? Number(form.nota_atual) : null,
+      data_implantacao: form.data_implantacao || null,
+    };
+
     try {
       if (editing) {
-        const { error } = await supabase.from('estabelecimentos').update(form).eq('id', editing.id);
+        const { error } = await supabase.from('estabelecimentos').update(payload).eq('id', editing.id);
         if (error) {
           if (
             error.message.includes('filtro_estrelas_ativo') ||
             error.message.includes('email_notificacao') ||
-            error.message.includes('canal_queixas')
+            error.message.includes('canal_queixas') ||
+            error.message.includes('avaliacoes_iniciais') ||
+            error.message.includes('nota_inicial') ||
+            error.message.includes('avaliacoes_atuais') ||
+            error.message.includes('nota_atual') ||
+            error.message.includes('data_implantacao')
           ) {
-            const { filtro_estrelas_ativo, email_notificacao, canal_queixas, ...fallbackForm } = form;
+            const {
+              filtro_estrelas_ativo, email_notificacao, canal_queixas,
+              avaliacoes_iniciais, nota_inicial, avaliacoes_atuais, nota_atual, data_implantacao,
+              ...fallbackForm
+            } = payload;
             const { error: retryErr } = await supabase.from('estabelecimentos').update(fallbackForm).eq('id', editing.id);
             if (retryErr) { setError(retryErr.message); setSaving(false); return; }
           } else {
@@ -193,14 +223,23 @@ export default function Estabelecimentos() {
           }
         }
       } else {
-        const { error } = await supabase.from('estabelecimentos').insert(form);
+        const { error } = await supabase.from('estabelecimentos').insert(payload);
         if (error) {
           if (
             error.message.includes('filtro_estrelas_ativo') ||
             error.message.includes('email_notificacao') ||
-            error.message.includes('canal_queixas')
+            error.message.includes('canal_queixas') ||
+            error.message.includes('avaliacoes_iniciais') ||
+            error.message.includes('nota_inicial') ||
+            error.message.includes('avaliacoes_atuais') ||
+            error.message.includes('nota_atual') ||
+            error.message.includes('data_implantacao')
           ) {
-            const { filtro_estrelas_ativo, email_notificacao, canal_queixas, ...fallbackForm } = form;
+            const {
+              filtro_estrelas_ativo, email_notificacao, canal_queixas,
+              avaliacoes_iniciais, nota_inicial, avaliacoes_atuais, nota_atual, data_implantacao,
+              ...fallbackForm
+            } = payload;
             const { error: retryErr } = await supabase.from('estabelecimentos').insert(fallbackForm);
             if (retryErr) { setError(retryErr.message); setSaving(false); return; }
           } else {
@@ -375,6 +414,19 @@ export default function Estabelecimentos() {
                               <ScanLine size={12} />
                               <span>{totalScans} scans</span>
                             </span>
+
+                            {e.avaliacoes_iniciais != null && e.avaliacoes_atuais != null && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80"
+                                title={`Antes: ${e.avaliacoes_iniciais} (${e.nota_inicial ?? '—'}★) ➔ Atual: ${e.avaliacoes_atuais} (${e.nota_atual ?? '—'}★)`}
+                              >
+                                <TrendingUp size={11} className="text-emerald-600" />
+                                <span>
+                                  {e.avaliacoes_atuais - e.avaliacoes_iniciais >= 0 ? '+' : ''}
+                                  {e.avaliacoes_atuais - e.avaliacoes_iniciais} avaliações
+                                </span>
+                              </span>
+                            )}
                           </div>
 
                           {s?.plateNumbers && s.plateNumbers.length > 0 && (
@@ -486,6 +538,19 @@ export default function Estabelecimentos() {
                       <ScanLine size={13} />
                       <span>{totalScans} scans</span>
                     </span>
+
+                    {e.avaliacoes_iniciais != null && e.avaliacoes_atuais != null && (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold text-xs bg-emerald-50 text-emerald-800 border border-emerald-200/80"
+                        title={`Antes: ${e.avaliacoes_iniciais} ➔ Atual: ${e.avaliacoes_atuais}`}
+                      >
+                        <TrendingUp size={11} className="text-emerald-600" />
+                        <span>
+                          {e.avaliacoes_atuais - e.avaliacoes_iniciais >= 0 ? '+' : ''}
+                          {e.avaliacoes_atuais - e.avaliacoes_iniciais} avaliações
+                        </span>
+                      </span>
+                    )}
 
                     {s?.plateNumbers && s.plateNumbers.length > 0 && (
                       <span className="text-[11px] font-mono text-slate-500 ml-auto truncate max-w-[130px]">
@@ -690,6 +755,112 @@ export default function Estabelecimentos() {
                         </span>
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+
+              {/* Métricas de Impacto: Comparativo Antes vs Depois da Placa */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-slate-800 space-y-3 animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <TrendingUp size={15} />
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-emerald-950 block">
+                      Comparativo Antes vs Depois da Placa
+                    </span>
+                    <span className="text-[11px] text-emerald-800/80">
+                      Preencha para exibir o comparativo de crescimento no relatório do cliente.
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-emerald-950 block mb-1">
+                    Data de Instalação da Placa
+                  </label>
+                  <input
+                    type="date"
+                    value={form.data_implantacao || ''}
+                    onChange={(e) => setForm({ ...form, data_implantacao: e.target.value })}
+                    className="input bg-white text-xs sm:text-sm py-1.5"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-1 border-t border-emerald-200/60">
+                  {/* Antes da Placa */}
+                  <div className="space-y-2 bg-white/80 p-2.5 rounded-xl border border-emerald-200/50">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                      📉 Antes da Placa
+                    </span>
+                    <div>
+                      <label className="text-[10px] text-slate-500 block">Nº de Avaliações</label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Ex: 42"
+                        value={form.avaliacoes_iniciais ?? ''}
+                        onChange={(e) => setForm({ ...form, avaliacoes_iniciais: e.target.value })}
+                        className="input bg-white text-xs py-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500 block">Nota (ex: 4.2)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="1"
+                        max="5"
+                        placeholder="Ex: 4.2"
+                        value={form.nota_inicial ?? ''}
+                        onChange={(e) => setForm({ ...form, nota_inicial: e.target.value })}
+                        className="input bg-white text-xs py-1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Com a Placa */}
+                  <div className="space-y-2 bg-white/80 p-2.5 rounded-xl border border-emerald-200/50">
+                    <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">
+                      🚀 Com a Placa (Atual)
+                    </span>
+                    <div>
+                      <label className="text-[10px] text-slate-500 block">Nº de Avaliações</label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Ex: 98"
+                        value={form.avaliacoes_atuais ?? ''}
+                        onChange={(e) => setForm({ ...form, avaliacoes_atuais: e.target.value })}
+                        className="input bg-white text-xs py-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500 block">Nota (ex: 4.8)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="1"
+                        max="5"
+                        placeholder="Ex: 4.8"
+                        value={form.nota_atual ?? ''}
+                        onChange={(e) => setForm({ ...form, nota_atual: e.target.value })}
+                        className="input bg-white text-xs py-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cálculo do Ganho em Tempo Real */}
+                {form.avaliacoes_iniciais !== '' && form.avaliacoes_atuais !== '' && (
+                  <div className="p-2 bg-emerald-100/80 border border-emerald-300/60 rounded-xl text-xs text-emerald-950 flex items-center justify-between font-semibold">
+                    <span>Resultado gerado:</span>
+                    <span className="font-extrabold text-emerald-900">
+                      {Number(form.avaliacoes_atuais) - Number(form.avaliacoes_iniciais) >= 0 ? '+' : ''}
+                      {Number(form.avaliacoes_atuais) - Number(form.avaliacoes_iniciais)} avaliações
+                      {Number(form.avaliacoes_iniciais) > 0 &&
+                        ` (+${Math.round(((Number(form.avaliacoes_atuais) - Number(form.avaliacoes_iniciais)) / Number(form.avaliacoes_iniciais)) * 100)}%)`}
+                    </span>
                   </div>
                 )}
               </div>
