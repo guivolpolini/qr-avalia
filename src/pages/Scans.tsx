@@ -13,6 +13,8 @@ import {
   Smartphone,
   Monitor,
   X,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -43,6 +45,7 @@ interface ScanMetrics {
   total7Dias: number;
   totalMes: number;
   totalGeral: number;
+  totalSemEst: number;
   totalQr: number;
   totalNfc: number;
   pctQr: number;
@@ -58,11 +61,13 @@ export default function Scans() {
   const [periodoFilter, setPeriodoFilter] = useState<PeriodoFilter>('todos');
   const [selectedEst, setSelectedEst] = useState<string>('');
   const [estabelecimentos, setEstabelecimentos] = useState<EstOption[]>([]);
+  const [deletingOrphans, setDeletingOrphans] = useState(false);
   const [metrics, setMetrics] = useState<ScanMetrics>({
     totalHoje: 0,
     total7Dias: 0,
     totalMes: 0,
     totalGeral: 0,
+    totalSemEst: 0,
     totalQr: 0,
     totalNfc: 0,
     pctQr: 0,
@@ -77,13 +82,16 @@ export default function Scans() {
   const loadMetricsAndEsts = useCallback(async (estId?: string) => {
     try {
       let scansQuery = supabase.from('scans').select('id, tipo, created_at, estabelecimento_id, estabelecimento:estabelecimento_id(nome)');
-      if (estId) {
+      if (estId === 'sem_estabelecimento') {
+        scansQuery = scansQuery.is('estabelecimento_id', null);
+      } else if (estId) {
         scansQuery = scansQuery.eq('estabelecimento_id', estId);
       }
 
-      const [scansRes, estsRes] = await Promise.all([
+      const [scansRes, estsRes, orphanCountRes] = await Promise.all([
         scansQuery,
         supabase.from('estabelecimentos').select('id, nome').order('nome'),
+        supabase.from('scans').select('*', { count: 'exact', head: true }).is('estabelecimento_id', null),
       ]);
 
       if (estsRes.data) {
@@ -130,6 +138,7 @@ export default function Scans() {
           total7Dias: d7,
           totalMes: mes,
           totalGeral,
+          totalSemEst: orphanCountRes.count ?? 0,
           totalQr: qr,
           totalNfc: nfc,
           pctQr: totalGeral > 0 ? Math.round((qr / totalGeral) * 100) : 0,
@@ -164,7 +173,10 @@ export default function Scans() {
       dataQuery = dataQuery.eq('tipo', tipoFilter);
     }
 
-    if (selectedEst) {
+    if (selectedEst === 'sem_estabelecimento') {
+      countQuery = countQuery.is('estabelecimento_id', null);
+      dataQuery = dataQuery.is('estabelecimento_id', null);
+    } else if (selectedEst) {
       countQuery = countQuery.eq('estabelecimento_id', selectedEst);
       dataQuery = dataQuery.eq('estabelecimento_id', selectedEst);
     }
@@ -195,6 +207,47 @@ export default function Scans() {
     setLoading(false);
   }, [page, tipoFilter, selectedEst, periodoFilter]);
 
+  // Apaga todos os scans sem estabelecimento vinculado
+  async function handleDeleteOrphanScans() {
+    if (metrics.totalSemEst === 0) {
+      alert('Não há scans sem estabelecimento para apagar.');
+      return;
+    }
+
+    const confirmMsg = `Tem certeza que deseja apagar permanentemente todos os ${metrics.totalSemEst} scans sem estabelecimento vinculado?\n\nEsta ação é irreversível e limpará registros órfãos ou de testes.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeletingOrphans(true);
+    try {
+      const { error } = await supabase.from('scans').delete().is('estabelecimento_id', null);
+      if (error) throw error;
+      if (selectedEst === 'sem_estabelecimento') {
+        setSelectedEst('');
+      }
+      await loadMetricsAndEsts(selectedEst === 'sem_estabelecimento' ? '' : selectedEst);
+      await load();
+    } catch (err: any) {
+      console.error('Erro ao apagar scans sem estabelecimento:', err);
+      alert('Erro ao apagar scans: ' + (err?.message || 'Tente novamente'));
+    } finally {
+      setDeletingOrphans(false);
+    }
+  }
+
+  // Apaga um scan individual
+  async function handleDeleteSingleScan(id: string, codigo: string) {
+    if (!window.confirm(`Deseja apagar este registro de scan da placa ${codigo}?`)) return;
+    try {
+      const { error } = await supabase.from('scans').delete().eq('id', id);
+      if (error) throw error;
+      await loadMetricsAndEsts(selectedEst);
+      await load();
+    } catch (err: any) {
+      console.error('Erro ao excluir scan:', err);
+      alert('Erro ao excluir scan: ' + (err?.message || 'Tente novamente'));
+    }
+  }
+
   useEffect(() => {
     setPage(0);
   }, [tipoFilter, selectedEst, periodoFilter]);
@@ -214,7 +267,10 @@ export default function Scans() {
   });
 
   const totalPages = Math.ceil(total / perPage);
-  const selectedEstNome = estabelecimentos.find((e) => e.id === selectedEst)?.nome;
+  const selectedEstNome =
+    selectedEst === 'sem_estabelecimento'
+      ? 'Sem estabelecimento'
+      : estabelecimentos.find((e) => e.id === selectedEst)?.nome;
 
   function formatDate(iso: string) {
     const d = new Date(iso);
@@ -382,6 +438,11 @@ export default function Scans() {
             className="input bg-white font-medium text-xs sm:text-sm"
           >
             <option value="">🏢 Todos os Clientes</option>
+            {metrics.totalSemEst > 0 && (
+              <option value="sem_estabelecimento" className="text-amber-700 font-bold">
+                ⚠️ Apenas Sem Estabelecimento ({metrics.totalSemEst})
+              </option>
+            )}
             {estabelecimentos.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.nome}
@@ -389,6 +450,20 @@ export default function Scans() {
             ))}
           </select>
         </div>
+
+        {/* Botão de Excluir Scans Sem Estabelecimento */}
+        {metrics.totalSemEst > 0 && (
+          <button
+            type="button"
+            onClick={handleDeleteOrphanScans}
+            disabled={deletingOrphans}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 transition-colors shadow-xs shrink-0"
+            title="Excluir permanentemente todos os scans sem cliente associado"
+          >
+            {deletingOrphans ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            <span>Apagar Sem Estabelecimento ({metrics.totalSemEst})</span>
+          </button>
+        )}
       </div>
 
       {/* Barra de Filtros: Período e Tipo de Tecnologia */}
@@ -478,6 +553,34 @@ export default function Scans() {
           ))}
         </div>
       </div>
+
+      {/* Alerta quando o filtro 'Sem Estabelecimento' estiver selecionado */}
+      {selectedEst === 'sem_estabelecimento' && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-rose-50 border border-rose-200/90 rounded-2xl text-rose-950 mb-5 animate-fade-in shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-rose-950">
+                Visualizando scans sem estabelecimento vinculado ({total})
+              </p>
+              <p className="text-xs text-rose-700 mt-0.5">
+                Estes scans ocorreram quando placas em estoque, virgens ou desassociadas foram lidas.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleDeleteOrphanScans}
+            disabled={deletingOrphans || total === 0}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors shadow-xs shrink-0 self-start sm:self-auto"
+          >
+            {deletingOrphans ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            <span>Apagar estes {total} scans</span>
+          </button>
+        </div>
+      )}
 
       {/* Banner de Status e Contagem Dinâmica do Período */}
       <div
@@ -597,6 +700,7 @@ export default function Scans() {
                   <th className="text-left font-semibold text-slate-600 px-4 py-3">Estabelecimento</th>
                   <th className="text-left font-semibold text-slate-600 px-4 py-3">Dispositivo</th>
                   <th className="text-right font-semibold text-slate-600 px-4 py-3">Data e Hora</th>
+                  <th className="text-right font-semibold text-slate-600 px-4 py-3 w-16">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -617,13 +721,25 @@ export default function Scans() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <Store size={14} className="text-slate-400 shrink-0" />
-                        <span className="font-medium text-slate-800">{s.estabelecimento?.nome ?? 'Sem estabelecimento'}</span>
+                        <span className={`font-medium ${!s.estabelecimento_id ? 'text-amber-700 italic' : 'text-slate-800'}`}>
+                          {s.estabelecimento?.nome ?? 'Sem estabelecimento'}
+                        </span>
                       </div>
                     </td>
                     {/* 4. Tópico 4: Dispositivo com Ícone */}
                     <td className="px-4 py-3">{renderDeviceBadge(s.user_agent)}</td>
                     <td className="px-4 py-3 text-right text-xs text-slate-500 font-mono">
                       {formatDate(s.created_at)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSingleScan(s.id, getCodigo(s))}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                        title="Apagar este scan"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -646,13 +762,25 @@ export default function Scans() {
                       {getCodigo(s)}
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                    <Calendar size={12} /> {formatDate(s.created_at)}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                      <Calendar size={12} /> {formatDate(s.created_at)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSingleScan(s.id, getCodigo(s))}
+                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                      title="Apagar este scan"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1.5 my-1.5">
                   <Store size={14} className="text-slate-400 shrink-0" />
-                  <p className="text-sm font-semibold text-slate-800">{s.estabelecimento?.nome ?? 'Sem estabelecimento'}</p>
+                  <p className={`text-sm font-semibold ${!s.estabelecimento_id ? 'text-amber-700 italic' : 'text-slate-800'}`}>
+                    {s.estabelecimento?.nome ?? 'Sem estabelecimento'}
+                  </p>
                 </div>
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-xs text-slate-400">Dispositivo:</span>
