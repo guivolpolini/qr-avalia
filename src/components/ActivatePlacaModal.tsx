@@ -18,6 +18,7 @@ import {
   Copy,
   Check,
   Radio,
+  Pencil,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento } from '@/types/database';
@@ -61,6 +62,8 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
   // Placa identificada
   const [placa, setPlaca] = useState<FoundPlaca | null>(null);
   const [isNewPlaca, setIsNewPlaca] = useState(false);
+  const [isEditingCode, setIsEditingCode] = useState(false);
+  const [editCodeValue, setEditCodeValue] = useState('');
 
   // Estabelecimentos
   const [estabelecimentos, setEstabelecimentos] = useState<Estabelecimento[]>([]);
@@ -135,7 +138,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
         { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 240, height: 240 },
+          qrbox: { width: 200, height: 200 },
           aspectRatio: 1.0,
         },
         async (decodedText) => {
@@ -162,6 +165,16 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
     }
   }, [stopCamera]);
 
+  // Volta para a tela de scan e reinicia a câmera
+  const handleRescan = useCallback(() => {
+    setPlaca(null);
+    setIsNewPlaca(false);
+    setMatchingNfcCode(null);
+    setManualCode('');
+    setIsEditingCode(false);
+    setStep('scan');
+  }, []);
+
   // Gerencia ciclo de vida da câmera ao abrir/fechar modal
   useEffect(() => {
     if (isOpen && step === 'scan' && !initialCode) {
@@ -182,6 +195,8 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
     const code = extrairCodigo(rawCode);
     if (!code) return;
 
+    setEditCodeValue(code);
+    setIsEditingCode(false);
     setSearching(true);
     setCameraError(null);
 
@@ -568,11 +583,22 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                 )}
 
                 {cameraActive && (
-                  <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none">
-                    <span className="text-[11px] font-semibold text-white/90 bg-slate-950/70 px-3 py-1 rounded-full backdrop-blur-xs border border-white/10">
-                      Posicione o QR Code no centro
-                    </span>
-                  </div>
+                  <>
+                    {/* Retículo e Cantos de Mira de Precisão */}
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                      <div className="w-44 h-44 rounded-xl relative shadow-[0_0_0_9999px_rgba(15,23,42,0.45)]">
+                        <div className="absolute -top-1 -left-1 w-5 h-5 border-t-2 border-l-2 border-amber-400 rounded-tl-sm" />
+                        <div className="absolute -top-1 -right-1 w-5 h-5 border-t-2 border-r-2 border-amber-400 rounded-tr-sm" />
+                        <div className="absolute -bottom-1 -left-1 w-5 h-5 border-b-2 border-l-2 border-amber-400 rounded-bl-sm" />
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 border-b-2 border-r-2 border-amber-400 rounded-br-sm" />
+                      </div>
+                    </div>
+                    <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none z-10">
+                      <span className="text-[11px] font-semibold text-white/95 bg-slate-950/80 px-3 py-1 rounded-full backdrop-blur-xs border border-white/10">
+                        Enquadre apenas a placa desejada
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -641,24 +667,94 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl ${isNfc ? 'bg-teal-600' : 'bg-brand-600'} text-white flex items-center justify-center font-bold text-sm shadow-xs`}>
-                    {isNfc ? <NfcIcon size={20} /> : <QrIcon size={20} />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-extrabold text-slate-900 font-mono tracking-tight">{placa.codigo}</h3>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${isNfc ? 'bg-teal-100 text-teal-800' : 'bg-blue-100 text-blue-800'}`}>
-                        {isNfc ? 'NFC' : 'QR Code'}
-                      </span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-10 h-10 rounded-xl ${isNfc ? 'bg-teal-600' : 'bg-brand-600'} text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0`}>
+                      {isNfc ? <NfcIcon size={20} /> : <QrIcon size={20} />}
                     </div>
-                    <p className="text-xs text-slate-500">
-                      {placa.estabelecimento
-                        ? `Atualmente associada a: ${placa.estabelecimento.nome}`
-                        : 'Pronta para ser ativada em um cliente'}
-                    </p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-extrabold text-slate-900 font-mono tracking-tight">{placa.codigo}</h3>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${isNfc ? 'bg-teal-100 text-teal-800' : 'bg-blue-100 text-blue-800'}`}>
+                          {isNfc ? 'NFC' : 'QR Code'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 truncate">
+                        {placa.estabelecimento
+                          ? `Atualmente associada a: ${placa.estabelecimento.nome}`
+                          : 'Pronta para ser ativada em um cliente'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Ações Rápidas: Reescanear ou Corrigir */}
+                  <div className="flex flex-col gap-1 shrink-0 text-right">
+                    <button
+                      type="button"
+                      onClick={handleRescan}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-brand-600 px-2.5 py-1 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-colors"
+                      title="Voltar e escanear outra placa com a câmera"
+                    >
+                      <RefreshCw size={12} />
+                      <span>Reescanear</span>
+                    </button>
+                    {!isEditingCode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditCodeValue(placa.codigo);
+                          setIsEditingCode(true);
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-800 px-2.5 py-1 rounded-lg hover:bg-brand-50/60 transition-colors"
+                        title="Corrigir o código se a câmera leu errado"
+                      >
+                        <Pencil size={11} />
+                        <span>Corrigir</span>
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* Formulário Inline de Correção de Código */}
+                {isEditingCode && (
+                  <div className="p-3 bg-white rounded-xl border border-brand-200 space-y-2 mt-2 shadow-xs animate-fade-in">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Corrigir código da placa manualmente:
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editCodeValue}
+                        onChange={(e) => setEditCodeValue(e.target.value.toUpperCase())}
+                        placeholder="Ex: QR020 ou NFC020"
+                        className="input font-mono font-bold uppercase text-sm py-1.5 flex-1"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editCodeValue.trim()) {
+                            setIsEditingCode(false);
+                            handleLookupCode(editCodeValue.trim());
+                          }
+                        }}
+                        className="btn-primary text-xs px-3 py-1.5 font-bold"
+                      >
+                        Carregar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingCode(false)}
+                        className="btn-secondary text-xs px-2.5 py-1.5"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Caso o QR Code físico ou vizinho tenha sido lido incorretamente, digite o código real da placa aqui.
+                    </p>
+                  </div>
+                )}
 
                 {matchingNfcCode && (
                   <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
