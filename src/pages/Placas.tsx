@@ -235,7 +235,17 @@ export default function Placas() {
   async function saveAssociacao() {
     if (!showAssoc) return;
     setAssocSaving(true);
-    const { error } = await supabase.from(table()).update({ estabelecimento_id: selectedEst || null }).eq('id', showAssoc.id);
+    const estId = selectedEst || null;
+    const { error } = await supabase.from(table()).update({ estabelecimento_id: estId }).eq('id', showAssoc.id);
+
+    // Sincroniza também o par correspondente (se QR001 -> NFC001, ou vice-versa)
+    const numMatch = showAssoc.codigo.match(/\d+/);
+    if (numMatch) {
+      const counterpart = view === 'qr' ? `NFC${numMatch[0]}` : `QR${numMatch[0]}`;
+      const otherTable = view === 'qr' ? 'nfc_tags' : 'qr_codes';
+      await supabase.from(otherTable).update({ estabelecimento_id: estId }).ilike('codigo', counterpart);
+    }
+
     setAssocSaving(false);
     if (error) { alert(error.message); return; }
     setShowAssoc(null);

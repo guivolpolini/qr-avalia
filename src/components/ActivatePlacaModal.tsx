@@ -48,6 +48,15 @@ function extrairCodigo(raw: string): string {
   if (match && match[2]) {
     return match[2].toUpperCase();
   }
+  // Se digitou apenas números (ex: 20 ou 020)
+  if (/^\d+$/.test(clean)) {
+    return `QR${clean.padStart(3, '0')}`;
+  }
+  // Se digitou sem prefixo com espaço (ex: "qr 20" ou "nfc 20")
+  const spaceMatch = clean.match(/^(qr|nfc)\s*(\d+)$/i);
+  if (spaceMatch) {
+    return `${spaceMatch[1].toUpperCase()}${spaceMatch[2].padStart(3, '0')}`;
+  }
   return clean.toUpperCase();
 }
 
@@ -210,7 +219,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
         const { data: nfcData, error: nfcErr } = await supabase
           .from('nfc_tags')
           .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
-          .eq('codigo', code)
+          .ilike('codigo', code)
           .maybeSingle();
 
         if (nfcErr) throw nfcErr;
@@ -222,7 +231,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
           const { data: qrData } = await supabase
             .from('qr_codes')
             .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
-            .eq('codigo', code)
+            .ilike('codigo', code)
             .maybeSingle();
           if (qrData) {
             existingItem = qrData;
@@ -234,7 +243,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
         const { data: qrData, error: qrErr } = await supabase
           .from('qr_codes')
           .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
-          .eq('codigo', code)
+          .ilike('codigo', code)
           .maybeSingle();
 
         if (qrErr) throw qrErr;
@@ -246,7 +255,7 @@ export default function ActivatePlacaModal({ isOpen, onClose, onSuccess, initial
           const { data: nfcData } = await supabase
             .from('nfc_tags')
             .select('*, estabelecimento:estabelecimento_id(id, nome, link_google)')
-            .eq('codigo', code)
+            .ilike('codigo', code)
             .maybeSingle();
           if (nfcData) {
             existingItem = nfcData;
