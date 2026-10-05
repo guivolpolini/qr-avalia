@@ -1,7 +1,42 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Plus, Pencil, Trash2, X, Search, ExternalLink, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  Search,
+  ExternalLink,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  BookOpen,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  MessageCircle,
+  Sparkles,
+  ShieldCheck,
+  MapPin,
+  Clock,
+  Camera,
+  Star,
+  ListChecks,
+  Send,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Estabelecimento, GoogleSeoStatus } from '@/types/database';
+
+const MENSAGEM_CLIENTE_GOOGLE = `Olá! Para configurarmos e otimizarmos sua ficha no Google para atrair mais clientes nas buscas e no Maps, preciso de algumas informações rápidas:
+
+1. Nome oficial da empresa (como na fachada)
+2. Endereço completo com CEP
+3. Telefone e WhatsApp de atendimento
+4. Horários de funcionamento (de segunda a domingo)
+5. Lista dos principais serviços/produtos que você oferece
+6. Fotos em boa qualidade: 1 da fachada, 3 a 5 do interior e dos seus produtos/serviços, mais o seu logotipo.
+
+Se você já tiver o perfil criado no Google, me avise que te passo meu e-mail para você me liberar o acesso como administrador, sem precisar me passar sua senha! 👍`;
 
 const CHECKLIST_ITEMS: { key: string; label: string }[] = [
   { key: 'perfil_criado', label: 'Perfil do Google Business criado' },
@@ -45,6 +80,15 @@ export default function GoogleSeo() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [onlyPending, setOnlyPending] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
+  const [activeGuideTab, setActiveGuideTab] = useState<'whatsapp' | 'dados' | 'passo_a_passo'>('whatsapp');
+  const [copiedMsg, setCopiedMsg] = useState(false);
+
+  function handleCopyWhatsAppMsg() {
+    navigator.clipboard.writeText(MENSAGEM_CLIENTE_GOOGLE);
+    setCopiedMsg(true);
+    setTimeout(() => setCopiedMsg(false), 2500);
+  }
 
   useEffect(() => {
     load();
@@ -135,6 +179,243 @@ export default function GoogleSeo() {
           <Plus size={18} />
           Novo registro
         </button>
+      </div>
+
+      {/* Guia & Playbook de Otimização do Google */}
+      <div className="mb-6 rounded-2xl bg-white border border-slate-200/90 shadow-xs overflow-hidden transition-all">
+        <div
+          onClick={() => setShowGuide(!showGuide)}
+          className="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition-colors select-none"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shadow-xs shrink-0">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base font-bold text-slate-900 leading-tight">
+                  Guia Prático: O que pedir e como otimizar o Google do Cliente
+                </h2>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Playbook VolpoTech
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Passo a passo, checklist de fatores de ranqueamento e script de WhatsApp para o cliente
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs font-semibold text-brand-600 hidden sm:inline">
+              {showGuide ? 'Ocultar Guia' : 'Abrir Guia'}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
+              {showGuide ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </div>
+          </div>
+        </div>
+
+        {showGuide && (
+          <div className="border-t border-slate-100 p-4 sm:p-6 bg-slate-50/50 space-y-5 animate-fade-in">
+            {/* Seletor de Abas do Guia */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-xl text-xs font-semibold max-w-md">
+              <button
+                type="button"
+                onClick={() => setActiveGuideTab('whatsapp')}
+                className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  activeGuideTab === 'whatsapp'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <MessageCircle size={14} className="text-emerald-600" />
+                <span>Script WhatsApp</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveGuideTab('dados')}
+                className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  activeGuideTab === 'dados'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ListChecks size={14} className="text-brand-600" />
+                <span>O que Solicitar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveGuideTab('passo_a_passo')}
+                className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  activeGuideTab === 'passo_a_passo'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BookOpen size={14} className="text-amber-600" />
+                <span>Como Executar</span>
+              </button>
+            </div>
+
+            {/* Conteúdo Aba 1: WhatsApp */}
+            {activeGuideTab === 'whatsapp' && (
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Send size={13} className="text-emerald-600" />
+                    Mensagem pronta para enviar ao cliente no onboarding:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyWhatsAppMsg}
+                    className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 self-start sm:self-auto cursor-pointer font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 border-brand-200"
+                  >
+                    {copiedMsg ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                    {copiedMsg ? 'Mensagem Copiada!' : 'Copiar Mensagem do WhatsApp'}
+                  </button>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all border border-slate-800">
+                  {MENSAGEM_CLIENTE_GOOGLE}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  💡 <strong>Dica de ouro:</strong> Nunca peça senha pessoal do Google do cliente. Peça para ele adicionar seu e-mail como administrador em <em>Configurações do Perfil &gt; Pessoas e Acesso</em>.
+                </p>
+              </div>
+            )}
+
+            {/* Conteúdo Aba 2: O que solicitar */}
+            {activeGuideTab === 'dados' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs mb-2.5">
+                    <ShieldCheck size={16} />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">1. Acesso ao Perfil</h4>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Pedir convite como <strong>Administrador</strong> pelo Gmail. Sem necessidade de senhas ou códigos SMS temporários.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs mb-2.5">
+                    <MapPin size={16} />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">2. Padrão NAP & Endereço</h4>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    <strong>Nome:</strong> idêntico à fachada (evita suspensão). <strong>Endereço:</strong> com CEP e número. <strong>Telefone:</strong> oficial ativo.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs mb-2.5">
+                    <Clock size={16} />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">3. Horários & Feriados</h4>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Horários de segunda a domingo, pausas de almoço e regras de feriados. Fichas com horários claros ganham prioridade nas buscas perto de fechar.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs mb-2.5">
+                    <Star size={16} />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">4. Serviços & Preços</h4>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Lista dos 5 a 10 serviços mais vendidos com descrição detalhada. Palavras-chave nos serviços ajudam o Google a entender o que ele vende.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-xs mb-2.5">
+                    <Camera size={16} />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">5. Fotos em Alta Resolução</h4>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    1 foto nítida de dia da fachada, 3 a 5 fotos do interior iluminado, produtos em destaque e o logotipo quadrado. Fichas com fotos reais recebem até 42% mais rotas no Maps.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-xs mb-2.5">
+                    <Sparkles size={16} />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">6. Diferenciais & Links</h4>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Estacionamento próprio, acessibilidade para cadeirantes, wi-fi, formas de pagamento, link do cardápio ou WhatsApp de pedidos.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Conteúdo Aba 3: Passo a passo de execução */}
+            {activeGuideTab === 'passo_a_passo' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-4 rounded-xl bg-white border border-slate-200/80">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="w-6 h-6 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center">1</span>
+                      <h4 className="text-xs font-bold text-slate-900">Validar Categoria Primária</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      A categoria principal é o fator #1 de ranqueamento. Escolha a mais específica possível (ex: <em>"Restaurante Italiano"</em> em vez de apenas <em>"Restaurante"</em>) e adicione até 4 categorias secundárias.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-white border border-slate-200/80">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="w-6 h-6 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center">2</span>
+                      <h4 className="text-xs font-bold text-slate-900">Ajustar o Pino no Google Maps</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Abra o mapa e arraste o pino exatamente para a porta de entrada do comércio. Isso garante que motoristas e pedestres cheguem sem erro via Waze/Google Maps.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-white border border-slate-200/80">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="w-6 h-6 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center">3</span>
+                      <h4 className="text-xs font-bold text-slate-900">Criar o Catálogo de Serviços</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Preencha a aba de <em>Serviços/Produtos</em> com descrições ricas incluindo termos locais (ex: <em>"Troca de óleo rápida em Santo André"</em>). Isso ativa os botões de ação e aumenta as chances de aparecer quando alguém busca pelo serviço exato.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-white border border-slate-200/80">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="w-6 h-6 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center">4</span>
+                      <h4 className="text-xs font-bold text-slate-900">Ativar a Placa QR Avalia</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Gere o link curto de avaliação direta no painel e vincule à placa física. A frequência contínua de novos reviews positivos com palavras-chave é o que consolida o negócio no Top 3 do Google Maps.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-white border border-slate-200/80">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="w-6 h-6 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center">5</span>
+                      <h4 className="text-xs font-bold text-slate-900">Responder Todas as Avaliações</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Oriente o lojista a responder todo review em até 24h, sempre agradecendo e citando o produto ou serviço contratado no texto da resposta para reforçar relevância semântica.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-white border border-slate-200/80">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="w-6 h-6 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center">6</span>
+                      <h4 className="text-xs font-bold text-slate-900">Publicar Postagens Semanais</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Fazer 1 post por semana na aba de Atualizações do Google Business com foto, oferta e botão de WhatsApp/Site. O algoritmo prioriza empresas que demonstram atividade frequente.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
